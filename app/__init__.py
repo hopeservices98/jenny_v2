@@ -55,5 +55,21 @@ def create_app():
 
         # Create database tables for our models
         db.create_all()
+        
+        # Initialisation base de données avec utilisateur admin
+        from app.models import User
+        try:
+            if not User.query.filter_by(username='admin').first():
+                admin_user = User(
+                    username='admin',
+                    email='admin@example.com',
+                    is_admin=True,
+                    is_active=True
+                )
+                admin_user.set_password('Admin123!')
+                db.session.add(admin_user)
+                db.session.commit()
+        except Exception as e:
+            print("DB init error:", e)
 
         return app
