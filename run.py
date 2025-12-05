@@ -1,60 +1,54 @@
 from app import create_app, db
 from app.models import User
 import os
+import json
 
 app = create_app()
 
-# Handler simple pour Vercel
+# Handler ultra-simplifié pour Vercel
 def handler(request):
+    # Obtenir la méthode et le chemin
+    method = request.get('method', 'GET')
+    path = request.get('path', '/')
+    query_string = request.get('queryString', '') or ''
+    
+    # Headers de base pour WSGI
+    environ = {
+        'REQUEST_METHOD': method,
+        'PATH_INFO': path,
+        'QUERY_STRING': query_string,
+        'SERVER_NAME': 'vercel.app',
+        'SERVER_PORT': '443',
+        'wsgi.url_scheme': 'https',
+        'wsgi.input': __import__('io').BytesIO(),
+        'wsgi.errors': __import__('sys').stderr,
+        'wsgi.multithread': False,
+        'wsgi.multiprocess': True,
+        'wsgi.run_once': False,
+    }
+    
+    # Headers de la requête
+    headers = request.get('headers', {})
+    for key, value in headers.items():
+        environ[f'HTTP_{key.upper().replace("-", "_")}'] = value
+    
+    # Fonction start_response simplifiée
+    status = '200 OK'
+    response_headers = []
+    
+    def start_response(status_line, headers_list):
+        nonlocal status, response_headers
+        status = status_line
+        response_headers = headers_list
+    
+    # Appeler l'app Flask
     try:
-        # Créer l'environnement WSGI
-        body = request.get('body', '') or ''
-        method = request.get('method', 'GET')
-        path = request.get('path', '/')
-        query_string = request.get('queryString', '') or ''
-        
-        headers = request.get('headers', {})
-        
-        # Créer l'environnement WSGI de base
-        environ = {
-            'REQUEST_METHOD': method,
-            'PATH_INFO': path,
-            'QUERY_STRING': query_string,
-            'CONTENT_TYPE': headers.get('content-type', ''),
-            'CONTENT_LENGTH': str(len(body)),
-            'wsgi.version': (1, 0),
-            'wsgi.url_scheme': 'https',
-            'wsgi.input': __import__('io').BytesIO(body.encode('utf-8')) if body else __import__('io').BytesIO(),
-            'wsgi.errors': __import__('sys').stderr,
-            'wsgi.multithread': False,
-            'wsgi.multiprocess': True,
-            'wsgi.run_once': False,
-            'SERVER_NAME': headers.get('host', 'vercel.app'),
-            'SERVER_PORT': '443',
-        }
-        
-        # Ajouter les headers HTTP
-        for key, value in headers.items():
-            environ[f'HTTP_{key.upper().replace("-", "_")}'] = value
-        
-        # Fonction de réponse
-        response_status = [200]
-        response_headers = []
-        
-        def start_response(status, headers):
-            response_status[0] = status
-            response_headers.extend(headers)
-        
-        # Appeler l'application Flask
         result = app.wsgi_app(environ, start_response)
-        
-        # Convertir le résultat en bytes
         response_body = b''.join(result)
-        
         return response_body
-        
     except Exception as e:
-        return f"Erreur: {str(e)}".encode('utf-8')
+        error_msg = f"Erreur interne: {str(e)}"
+        return error_msg.encode('utf-8')
 
 if __name__ == '__main__':
     with app.app_context():
