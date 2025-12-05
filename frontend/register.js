@@ -18,7 +18,7 @@ sendCodeBtn.addEventListener('click', async () => {
     sendCodeBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
     try {
-        const response = await fetch('/auth/send-code', {
+        const response = await fetch('/api/send-code', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -89,7 +89,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
         return;
     }
 
-    const response = await fetch('/register', {
+    const response = await fetch('/api/register', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
