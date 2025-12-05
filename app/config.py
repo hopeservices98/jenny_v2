@@ -58,8 +58,17 @@ class Config:
     # Session Config
     PERMANENT_SESSION_LIFETIME = 1800 # 30 minutes d'inactivité avant déconnexion
 
-    # Database
-    SQLALCHEMY_DATABASE_URI = "sqlite:///../instance/jenny_memory.db"
+    # Database - Configuration Vercel compatible
+    if os.environ.get('VERCEL'):
+        # Sur Vercel, utiliser le répertoire /tmp accessible en écriture
+        db_path = '/tmp/jenny_memory.db'
+        SQLALCHEMY_DATABASE_URI = f'sqlite:///{db_path}'
+    else:
+        # En local, utiliser instance/
+        instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'instance')
+        os.makedirs(instance_path, exist_ok=True)
+        SQLALCHEMY_DATABASE_URI = f'sqlite:///{instance_path}/jenny_memory.db'
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Configuration des uploads
