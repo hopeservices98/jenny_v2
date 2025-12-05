@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Jenny</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen bg-[url('/images/unnamed.jpg')] bg-cover bg-center bg-no-repeat bg-fixed relative">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+    
+    <div class="relative z-10 container mx-auto p-4 md:p-8">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div class="flex items-center">
+                <div class="w-12 h-12 rounded-full p-0.5 bg-gradient-to-r from-pink-500 to-purple-600 mr-4 shadow-lg shadow-pink-500/50">
+                    <img src="/images/unnamed.jpg" alt="Jenny" class="w-full h-full rounded-full object-cover border-2 border-gray-800">
+                </div>
+                <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">Administration</h1>
+            </div>
+            <a href="/logout"
+                class="bg-gray-800/50 hover:bg-red-900/50 text-gray-300 hover:text-red-400 border border-gray-600 hover:border-red-500/50 rounded-full px-6 py-2 font-bold transition-all duration-300 backdrop-blur-md shadow-lg flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Déconnexion
+            </a>
+        </div>
+
+        <!-- Création Utilisateur -->
+        <div class="bg-gray-800/60 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 mb-8 border border-pink-500/20">
+            <h2 class="text-2xl font-bold mb-6 text-pink-300 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Nouvel Utilisateur
+            </h2>
+            <form id="create-user-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div class="mb-4 md:mb-0">
+                    <label for="create-username" class="block text-xs font-bold mb-2 text-gray-400 uppercase tracking-wider">Nom d'utilisateur</label>
+                    <input type="text" id="create-username"
+                        class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+                        required>
+                </div>
+                <div class="mb-4 md:mb-0">
+                    <label for="create-password" class="block text-xs font-bold mb-2 text-gray-400 uppercase tracking-wider">Mot de passe</label>
+                    <input type="password" id="create-password"
+                        class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+                        required>
+                </div>
+                <div class="mb-4 md:mb-0 flex items-center h-10">
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="create-is-admin" class="sr-only peer">
+                        <div class="relative w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+                        <span class="ms-3 text-sm font-medium text-gray-300">Admin</span>
+                    </label>
+                </div>
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 rounded-lg py-2 px-4 text-white font-bold shadow-lg shadow-pink-500/30 transform transition hover:scale-105">
+                    Créer
+                </button>
+            </form>
+            <div id="create-error-message" class="text-red-400 mt-4 text-sm text-center font-medium"></div>
+        </div>
+
+        <!-- Liste Utilisateurs -->
+        <div class="bg-gray-800/60 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 mb-8 border border-pink-500/20">
+            <h2 class="text-2xl font-bold mb-6 text-pink-300 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Utilisateurs
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-gray-700 text-gray-400 text-xs uppercase tracking-wider">
+                            <th class="p-3">ID</th>
+                            <th class="p-3">Utilisateur</th>
+                            <th class="p-3">Email</th>
+                            <th class="p-3">Statut</th>
+                            <th class="p-3">Abonnement</th>
+                            <th class="p-3">Rôle</th>
+                            <th class="p-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-list" class="text-sm divide-y divide-gray-700/50">
+                        <!-- Les utilisateurs seront insérés ici par JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Chat avec Jenny -->
+        <div class="bg-gray-800/60 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 border border-pink-500/20">
+            <h2 class="text-2xl font-bold mb-6 text-pink-300 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                Test Chat Jenny
+            </h2>
+            <div id="chat-container" class="w-full h-[500px] bg-gray-900/80 rounded-2xl flex flex-col border border-gray-700 overflow-hidden">
+                <div class="flex items-center p-4 border-b border-gray-700 bg-gray-800/50">
+                    <div class="relative">
+                        <img id="main-avatar" src="" class="w-10 h-10 rounded-full mr-3 border border-pink-500">
+                        <span class="absolute bottom-0 right-3 w-2.5 h-2.5 bg-green-500 border-2 border-gray-800 rounded-full"></span>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white">Jenny</h1>
+                        <p class="text-xs text-green-400 font-medium">En ligne</p>
+                    </div>
+                </div>
+                <div id="chat-box" class="flex-grow p-4 overflow-y-auto space-y-3 custom-scrollbar"></div>
+                <div id="user-input" class="p-4 bg-gray-800/50 border-t border-gray-700 flex items-center gap-2">
+                    <input type="text" id="message-input" placeholder="Écrivez votre message..." 
+                        class="flex-grow bg-gray-700/50 border border-gray-600 rounded-full py-2 px-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all">
+                    <button id="send-button" class="bg-pink-600 hover:bg-pink-500 rounded-full p-2 text-white shadow-lg transition-transform hover:scale-105">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for editing user -->
+    <div id="edit-modal" class="hidden fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-90 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-middle bg-gray-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-gray-700">
+                <div class="bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <h3 class="text-xl leading-6 font-bold text-white mb-4" id="modal-title">Modifier l'utilisateur</h3>
+                    <form id="edit-user-form">
+                        <input type="hidden" id="edit-user-id">
+                        <div class="mb-4">
+                            <label for="edit-username" class="block text-xs font-bold mb-2 text-gray-400 uppercase">Nom d'utilisateur</label>
+                            <input type="text" id="edit-username"
+                                class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="edit-password" class="block text-xs font-bold mb-2 text-gray-400 uppercase">Nouveau mot de passe</label>
+                            <input type="password" id="edit-password" placeholder="Laisser vide pour ne pas changer"
+                                class="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-pink-500">
+                        </div>
+                        
+                        <div class="flex flex-col gap-3 mt-6">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="edit-is-admin" class="sr-only peer">
+                                <div class="relative w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+                                <span class="ms-3 text-sm font-medium text-gray-300">Administrateur</span>
+                            </label>
+                            
+                            <!-- Le container pour is_active sera injecté ici par JS -->
+                            <div id="edit-active-wrapper"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="bg-gray-700/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="save-edit-btn" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-pink-600 text-base font-medium text-white hover:bg-pink-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                        Sauvegarder
+                    </button>
+                    <button type="button" id="cancel-edit" class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-600 shadow-sm px-4 py-2 bg-gray-800 text-base font-medium text-gray-300 hover:bg-gray-700 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                        Annuler
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+
+</html>

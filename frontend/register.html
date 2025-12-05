@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Créez votre compte Jenny pour accéder à votre assistante personnelle virtuelle.">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Inscription - Jenny</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-gray-900 text-white flex justify-center items-center min-h-screen py-10 bg-[url('/images/unnamed.jpg')] bg-cover bg-center bg-no-repeat relative">
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <div class="w-full max-w-2xl bg-gray-800/80 backdrop-blur-md rounded-2xl shadow-2xl p-4 md:p-8 relative z-10 border border-pink-500/30 mx-4 my-4">
+        <div class="flex flex-col items-center mb-6">
+            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400 mb-2">Rejoins Jenny</h1>
+            <p class="text-pink-200 text-sm italic">Crée ton compte pour commencer l'expérience...</p>
+        </div>
+        <form id="register-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="mb-4">
+                <label for="username" class="block text-sm font-bold mb-2">Nom d'utilisateur</label>
+                <input type="text" id="username" name="username"
+                    class="w-full bg-gray-700 rounded-full py-3 px-6 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    required>
+            </div>
+            <div class="mb-4">
+                <label for="email" class="block text-sm font-bold mb-2">Email</label>
+                <input type="email" id="email" name="email"
+                    class="w-full bg-gray-700 rounded-full py-3 px-6 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 mb-2"
+                    required>
+                <div class="flex flex-col items-start">
+                    <button type="button" id="send-code-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full whitespace-nowrap transition-colors text-sm">
+                        Envoyer le code de vérification
+                    </button>
+                    <p class="text-xs text-gray-400 mt-1 ml-2">Cliquez ici pour recevoir un code par email nécessaire à l'inscription.</p>
+                </div>
+            </div>
+            <div class="mb-4 hidden" id="verification-code-container">
+                <label for="verification_code" class="block text-sm font-bold mb-2 text-green-400">Code de vérification reçu par email</label>
+                <div class="flex justify-center">
+                    <input type="text" id="verification_code" name="verification_code" placeholder="123456" maxlength="6"
+                        class="w-40 bg-gray-700 rounded-full py-3 px-6 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 tracking-widest text-center font-bold text-xl">
+                </div>
+                <p class="text-xs text-gray-400 mt-1 text-center">Entrez ce code pour valider votre email et finaliser l'inscription.</p>
+            </div>
+            <div class="mb-4">
+                <label for="first_name" class="block text-sm font-bold mb-2">Prénom</label>
+                <input type="text" id="first_name" name="first_name"
+                    class="w-full bg-gray-700 rounded-full py-3 px-6 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    required>
+            </div>
+            <div class="mb-4">
+                <label for="last_name" class="block text-sm font-bold mb-2">Nom</label>
+                <input type="text" id="last_name" name="last_name"
+                    class="w-full bg-gray-700 rounded-full py-3 px-6 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    required>
+            </div>
+            <div class="mb-4 md:col-span-2">
+                <label for="address" class="block text-sm font-bold mb-2">Adresse</label>
+                <input type="text" id="address" name="address"
+                    class="w-full bg-gray-700 rounded-full py-3 px-6 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    required>
+            </div>
+            <div class="mb-4 md:col-span-2">
+                <label for="birth_date" class="block text-sm font-bold mb-2">Date de naissance</label>
+                <input type="date" id="birth_date" name="birth_date"
+                    class="w-full bg-gray-700 rounded-full py-3 px-6 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    required>
+            </div>
+            <div class="mb-4 relative">
+                <label for="password" class="block text-sm font-bold mb-2">Mot de passe</label>
+                <input type="password" id="password" name="password"
+                    class="w-full bg-gray-700 rounded-full py-3 px-6 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 pr-12"
+                    required autocomplete="new-password">
+                <button type="button" id="toggle-password" class="absolute right-4 top-9 text-gray-400 hover:text-white focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </button>
+            </div>
+            <div class="mb-6 relative">
+                <label for="confirm_password" class="block text-sm font-bold mb-2">Confirmer le mot de passe</label>
+                <input type="password" id="confirm_password" name="confirm_password"
+                    class="w-full bg-gray-700 rounded-full py-3 px-6 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 pr-12"
+                    required autocomplete="new-password">
+                <button type="button" id="toggle-confirm-password" class="absolute right-4 top-9 text-gray-400 hover:text-white focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </button>
+            </div>
+            <div class="md:col-span-2 mt-4">
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 rounded-full p-3 text-white font-bold shadow-lg shadow-pink-500/30 transform transition hover:scale-105">S'inscrire</button>
+            </div>
+        </form>
+
+        <p class="text-center mt-4">
+            Déjà un compte ? <a href="/login" class="text-pink-500 hover:underline">Connectez-vous</a>
+        </p>
+        <div id="error-message" class="text-red-500 text-center mt-4"></div>
+    </div>
+    <script src="register.js"></script>
+</body>
+
+</html>

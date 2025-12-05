@@ -1,0 +1,1 @@
+# Package de services - contient les services métier (Gemini, génération d'images, etc.)

@@ -1,0 +1,10 @@
+Flask==2.2.2
+Werkzeug==2.2.3
+requests
+Flask-SQLAlchemy
+google-generativeai
+Flask-Login
+openai>=1.0.0
+Flask-Talisman
+Flask-Limiter
+sendgrid>=6.0.0

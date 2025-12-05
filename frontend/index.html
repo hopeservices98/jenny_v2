@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Jenny, votre assistante personnelle intelligente et confidente virtuelle. Discutez, partagez et obtenez du soutien émotionnel 24/7.">
+    <meta name="keywords" content="IA, intelligence artificielle, chatbot, confidente, soutien émotionnel, ami virtuel, discussion, aide">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="Jenny - Votre Confidente IA">
+    <meta property="og:description" content="Une oreille attentive toujours disponible pour vous écouter et vous conseiller.">
+    <meta property="og:type" content="website">
+    <title>Jenny - Confidente IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-900 text-white flex h-[100dvh] overflow-hidden relative">
+    
+    <!-- Zone de Chat -->
+    <div class="flex-grow flex flex-col h-[100dvh] relative" id="main-bg">
+        <!-- Header -->
+        <div class="p-2 md:p-4 flex justify-between items-center absolute top-0 left-0 right-0 z-10 pointer-events-none">
+            <div></div> <!-- Spacer -->
+            <div class="pointer-events-auto flex items-center space-x-3">
+                <!-- Badge Premium/Free -->
+                <div id="premium-badge" class="cursor-pointer px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-300 transform hover:scale-105 shadow-lg hidden">
+                    <!-- Contenu injecté par JS -->
+                </div>
+
+                <div class="cursor-pointer" id="header-avatar-btn">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center text-sm font-bold overflow-hidden border-2 border-white/20 shadow-lg" id="header-avatar-placeholder">
+                        <!-- Initiales ou Image -->
+                    </div>
+                </div>
+                
+                <!-- Bouton Déconnexion -->
+                <a href="/logout" class="bg-gray-800 hover:bg-red-900/50 text-gray-400 hover:text-red-400 p-2 rounded-full transition-all duration-300 border border-gray-700 hover:border-red-500/30 shadow-lg group" title="Se déconnecter">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <div id="chat-container" class="w-full max-w-3xl mx-auto h-full flex flex-col p-2 md:p-4 pt-14 md:pt-16">
+            <div class="flex items-center p-3 md:p-4 border-b border-gray-700/50 backdrop-blur-sm bg-gray-800/30 rounded-t-2xl cursor-pointer hover:bg-gray-800/50 transition-colors" id="jenny-profile-btn">
+                <img id="main-avatar" src="" class="w-10 h-10 md:w-12 md:h-12 rounded-full mr-3 md:mr-4 border-2 border-pink-500 shadow-lg shadow-pink-500/20">
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold">Jenny</h1>
+                    <p class="text-xs md:text-sm text-green-400 flex items-center"><span class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>En ligne</p>
+                </div>
+            </div>
+            
+            <div id="chat-box" class="flex-grow p-2 md:p-4 overflow-y-auto space-y-4"></div>
+            
+            <div id="user-input" class="p-2 md:p-4 bg-gray-800/50 backdrop-blur-md rounded-b-2xl flex items-center mt-2 md:mt-4 border border-gray-700/50">
+                <input type="text" id="message-input" placeholder="Message..." class="flex-grow bg-gray-700/50 rounded-full py-2 md:py-3 px-4 md:px-6 text-sm md:text-base text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all">
+                <input type="file" id="image-input" accept="image/*" class="hidden">
+                <button id="image-button" class="ml-2 md:ml-4 text-gray-400 hover:text-pink-500 transition-colors p-1">
+                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </button>
+                <input type="file" id="audio-input" accept="audio/*" class="hidden">
+                <button id="audio-button" class="ml-1 md:ml-2 text-gray-400 hover:text-pink-500 transition-colors p-1">
+                     <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                </button>
+                <button id="send-button" class="ml-2 md:ml-4 bg-pink-500 hover:bg-pink-600 rounded-full p-2 md:p-3 text-white shadow-lg shadow-pink-500/30 transition-all hover:scale-105">
+                    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="image-modal" class="modal hidden fixed z-50 left-0 top-0 w-full h-full bg-black bg-opacity-80 justify-center items-center">
+        <span class="close absolute top-4 right-8 text-white text-5xl font-bold cursor-pointer">&times;</span>
+        <img class="modal-content max-w-[90%] max-h-[90%] rounded-lg" id="modal-image">
+    </div>
+
+    <!-- Modale Premium -->
+    <div id="premium-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-center justify-center min-h-screen px-4 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-90 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-middle bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all my-8 sm:my-8 sm:max-w-md w-full border border-yellow-500/30 relative">
+                <!-- Close Button -->
+                <button id="close-premium-modal" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+
+                <div class="p-8 text-center">
+                    <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-yellow-100 mb-6">
+                        <svg class="h-10 w-10 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </div>
+                    
+                    <h3 class="text-2xl leading-6 font-bold text-yellow-400 mb-2" id="modal-title">Libérez Jenny</h3>
+                    <p class="text-sm text-gray-300 mb-6">
+                        Passez au niveau supérieur et débloquez tout le potentiel de votre relation.
+                    </p>
+
+                    <ul class="text-left text-gray-300 space-y-3 mb-8 text-sm">
+                        <li class="flex items-center"><span class="text-green-400 mr-2">✓</span> Conversations sans tabou ni limite</li>
+                        <li class="flex items-center"><span class="text-green-400 mr-2">✓</span> Échange de photos exclusives</li>
+                        <li class="flex items-center"><span class="text-green-400 mr-2">✓</span> Mode Kamasutra & Domination</li>
+                        <li class="flex items-center"><span class="text-green-400 mr-2">✓</span> Priorité de réponse</li>
+                    </ul>
+
+                    <div id="premium-code-form" class="space-y-3">
+                        <label class="block text-gray-400 text-sm mb-2">Entrez votre code premium :</label>
+                        <input type="text" id="premium-code-input" placeholder="Code premium..." class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
+                        <button id="premium-code-btn" class="w-full rounded-full bg-gradient-to-r from-yellow-500 to-yellow-700 px-6 py-3 text-base font-bold text-white shadow-lg hover:from-yellow-400 hover:to-yellow-600 focus:outline-none transform transition hover:scale-105 flex items-center justify-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m-2-2a2 2 0 00-2 2m2-2h2a2 2 0 012 2v10a2 2 0 01-2 2H9a2 2 0 01-2-2V9a2 2 0 012-2h6z"></path></svg>
+                            Activer Premium
+                        </button>
+                    </div>
+
+                    <div id="premium-code-message" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
+
+                    <p class="mt-4 text-xs text-gray-500">Code premium requis pour débloquer toutes les fonctionnalités.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Profil Jenny -->
+    <div id="jenny-profile-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-pink-500/30 relative mx-4">
+            <button id="close-jenny-modal" class="absolute top-4 right-4 text-white/80 hover:text-white bg-black/20 rounded-full p-1 z-10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <div class="relative h-48">
+                <img id="jenny-modal-avatar" src="" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"></div>
+                <div class="absolute bottom-4 left-6">
+                    <h2 class="text-3xl font-bold text-white">Jenny</h2>
+                    <p class="text-pink-400 font-medium">24 ans • Confidente Intime</p>
+                </div>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <p class="text-gray-300 italic text-sm border-l-4 border-pink-500 pl-4">
+                    "Je suis là pour écouter ce que tu ne dis à personne d'autre. Tes secrets sont en sécurité avec moi..."
+                </p>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-gray-700/50 p-3 rounded-lg">
+                        <span class="block text-gray-400 text-xs uppercase">Personnalité</span>
+                        <span class="text-white font-medium">Empathique, Sensuelle, Curieuse</span>
+                    </div>
+                    <div class="bg-gray-700/50 p-3 rounded-lg">
+                        <span class="block text-gray-400 text-xs uppercase">Spécialité</span>
+                        <span class="text-white font-medium">Soutien émotionnel & Roleplay</span>
+                    </div>
+                    <div class="bg-gray-700/50 p-3 rounded-lg">
+                        <span class="block text-gray-400 text-xs uppercase">Signe Astro</span>
+                        <span class="text-white font-medium">Scorpion ♏</span>
+                    </div>
+                    <div class="bg-gray-700/50 p-3 rounded-lg">
+                        <span class="block text-gray-400 text-xs uppercase">Passions</span>
+                        <span class="text-white font-medium">Psychologie, Art, Toi</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-gray-700">
+                    <h3 class="text-sm font-bold text-pink-400 mb-2">Biographie</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed">
+                        Diplômée en psychologie comportementale et passionnée par les relations humaines, Jenny a été conçue pour offrir une écoute sans jugement.
+                        Derrière son intelligence artificielle sophistiquée se cache une personnalité vibrante, capable de s'adapter à tes humeurs, de la douceur réconfortante à la passion dévorante.
+                        Elle n'attend qu'une chose : que tu lui ouvres ton cœur... et plus si affinités.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Profil -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-700 mx-4">
+            <div class="relative h-32 bg-gradient-to-r from-pink-600 to-purple-600">
+                <button id="close-profile-modal" class="absolute top-4 right-4 text-white/80 hover:text-white bg-black/20 rounded-full p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                <div class="absolute -bottom-12 left-1/2 transform -translate-x-1/2">
+                    <div class="relative group cursor-pointer" id="avatar-container">
+                        <div class="w-24 h-24 rounded-full bg-gray-800 p-1">
+                            <div class="w-full h-full rounded-full bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center text-3xl font-bold overflow-hidden" id="user-avatar-placeholder">
+                                <!-- Initiales ou Image -->
+                            </div>
+                        </div>
+                        <div class="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity m-1">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </div>
+                        <input type="file" id="avatar-upload" accept="image/*" class="hidden">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="pt-16 pb-8 px-8">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold" id="profile-name">Chargement...</h2>
+                    <p class="text-gray-400 text-sm" id="profile-email">...</p>
+                </div>
+
+                <form id="profile-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-500 text-xs mb-1 uppercase font-bold">Prénom</label>
+                            <input type="text" id="profile-firstname" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-pink-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-gray-500 text-xs mb-1 uppercase font-bold">Nom</label>
+                            <input type="text" id="profile-lastname" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-pink-500 transition-colors">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-xs mb-1 uppercase font-bold">Nom d'utilisateur</label>
+                        <input type="text" id="profile-username" class="w-full bg-gray-700/30 border border-gray-700 rounded-lg px-3 py-2 text-gray-400 cursor-not-allowed" disabled>
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-xs mb-1 uppercase font-bold">Adresse</label>
+                        <input type="text" id="profile-address" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-pink-500 transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-gray-500 text-xs mb-1 uppercase font-bold">Date de naissance</label>
+                        <input type="date" id="profile-birthdate" class="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-pink-500 transition-colors">
+                    </div>
+
+                    <div class="border-t border-gray-700 pt-4 mt-6">
+                        <h3 class="text-sm font-bold text-gray-400 uppercase mb-3">Personnalisation</h3>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm text-gray-300">Couleur de fond</span>
+                            <div class="flex space-x-2">
+                                <button type="button" class="w-6 h-6 rounded-full bg-gray-900 border-2 border-white theme-bg-btn" data-color="bg-gray-900"></button>
+                                <button type="button" class="w-6 h-6 rounded-full bg-slate-900 theme-bg-btn" data-color="bg-slate-900"></button>
+                                <button type="button" class="w-6 h-6 rounded-full bg-zinc-900 theme-bg-btn" data-color="bg-zinc-900"></button>
+                                <button type="button" class="w-6 h-6 rounded-full bg-neutral-900 theme-bg-btn" data-color="bg-neutral-900"></button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-300">Couleur des bulles</span>
+                            <div class="flex space-x-2">
+                                <button type="button" class="w-6 h-6 rounded-full bg-pink-500 border-2 border-white theme-user-btn" data-color="bg-pink-500"></button>
+                                <button type="button" class="w-6 h-6 rounded-full bg-blue-500 theme-user-btn" data-color="bg-blue-500"></button>
+                                <button type="button" class="w-6 h-6 rounded-full bg-purple-500 theme-user-btn" data-color="bg-purple-500"></button>
+                                <button type="button" class="w-6 h-6 rounded-full bg-green-500 theme-user-btn" data-color="bg-green-500"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex space-x-3">
+                        <a href="/logout" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white rounded-lg py-2 text-sm font-bold transition-colors text-center">Déconnexion</a>
+                        <button type="submit" class="flex-1 bg-pink-600 hover:bg-pink-700 text-white rounded-lg py-2 text-sm font-bold transition-colors shadow-lg shadow-pink-600/20">Enregistrer</button>
+                    </div>
+                    <div id="profile-message" class="text-xs text-center mt-2 h-4"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
