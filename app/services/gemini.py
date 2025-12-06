@@ -19,7 +19,7 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
     # Injection du contexte utilisateur
     user_context = ""
     if user:
-        status = "PREMIUM" if user.is_premium else "FREE"
+        status = "PREMIUM" if user.is_premium or user.is_admin else "FREE"
         user_context = f"\n\n[CONTEXTE UTILISATEUR]\nStatut: {status}\nNom: {user.first_name or user.username}"
         if not user.is_premium:
             user_context += f"\nPhase de séduction actuelle: {user.interaction_step}/10 (Plus le chiffre est haut, plus tu dois teaser/frustrer)"
