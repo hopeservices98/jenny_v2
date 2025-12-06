@@ -113,7 +113,11 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
             
             if response.status_code == 200:
                 result = response.json()
-                return result['choices'][0]['message']['content']
+                ai_message = result['choices'][0]['message']['content']
+                # Nettoyage minimal des artefacts (espaces multiples, virgules isolées)
+                clean_message = re.sub(r'\s{2,}', ' ', ai_message)
+                clean_message = clean_message.replace(' , ', ' ')
+                return clean_message.strip()
             elif response.status_code == 402 or response.status_code == 429: # Payment Required or Too Many Requests
                 print(f"QUOTA OPENROUTER ATTEINT: {response.status_code}")
                 # On laisse le modèle gérer la réponse en se basant sur le prompt système
@@ -168,7 +172,11 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
         # --- VERIFICATION ANTI-PLANTAGE ---
         # Au lieu de planter si Google bloque, on vérifie s'il y a du texte
         if response.parts:
-            return response.text
+            ai_message = response.text
+            # Nettoyage minimal des artefacts (espaces multiples, virgules isolées)
+            clean_message = re.sub(r'\s{2,}', ' ', ai_message)
+            clean_message = clean_message.replace(' , ', ' ')
+            return clean_message.strip()
         else:
             # Si Google a bloqué quand même (Finish Reason)
             print(f"DEBUG: Réponse bloquée. Finish Reason: {response.candidates[0].finish_reason}")
