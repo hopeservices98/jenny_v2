@@ -59,12 +59,14 @@ class Config:
     PERMANENT_SESSION_LIFETIME = 1800 # 30 minutes d'inactivité avant déconnexion
 
     # Database - Configuration PostgreSQL Railway ou SQLite fallback
-    if os.environ.get('jenny_POSTGRES_URL'):
-        # Utiliser Supabase PostgreSQL
-        # Supprimer le paramètre 'supa' non standard de l'URL
-        db_url = os.environ.get('POSTGRES_URL', '').split('?')[0]
+    # Vercel utilise DATABASE_URL, Supabase fournit POSTGRES_URL. On vérifie les deux.
+    db_url_env = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
+    
+    if db_url_env:
+        # Supprimer le paramètre 'supa' non standard s'il existe
+        db_url = db_url_env.split('?')[0]
         SQLALCHEMY_DATABASE_URI = db_url.replace('postgres://', 'postgresql+psycopg2://')
-        print(f"INFO: Base de données Supabase configurée")
+        print(f"INFO: Base de données PostgreSQL externe configurée")
     elif os.environ.get('VERCEL'):
         # Sur Vercel sans BDD Railway, utiliser SQLite temporaire
         db_path = '/tmp/jenny_memory.db'
