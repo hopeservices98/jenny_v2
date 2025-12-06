@@ -80,3 +80,9 @@ temp/
 tmp/
 .vercel
 .env*.local
+
+bdd_jenny.txt
+bdd_railway.txt
+migrate_to_railway.py
+reset_all_passwords.py
+vid/5122076b-4dff-4104-a738-f2dad74abfc1.mp4
