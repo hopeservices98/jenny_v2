@@ -1,5 +1,4 @@
 // UI utilities for chat
-const API_BASE = 'http://127.0.0.1:5000';
 
 export function createTypingIndicator() {
     const messageWrapper = document.createElement('div');
@@ -137,14 +136,38 @@ export function createMessageBubble(sender, message, imageUrl, audioUrl, userBub
     if (message) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('text-white', 'text-sm');
-        if (window.markdownit) {
+        
+        let processedMessage = message;
+
+        // Initialiser markdown-it une seule fois
+        const md = new window.markdownit({
+            html: true, // Permettre le HTML dans le Markdown
+        });
+
+        // Convertir nos balises personnalisées en HTML valide AVANT le rendu Markdown
+        const colorMap = {
+            'pink': 'text-pink-500 font-bold',
+            'red': 'text-red-500',
+            'blue': 'text-blue-400',
+            'purple': 'text-purple-400 italic',
+            'yellow': 'text-yellow-400',
+        };
+        for (const color in colorMap) {
+            const regex = new RegExp(`<${color}>(.*?)</${color}>`, 'g');
+            processedMessage = processedMessage.replace(regex, `<span class="${colorMap[color]}">$1</span>`);
+        }
+        
+        // Traiter les actions entre parenthèses et astérisques
+        processedMessage = processedMessage.replace(/\*\((.*?)\)\*/g, '<span class="text-gray-400 italic">($1)</span>');
+
+        if (typeof window.markdownit !== 'undefined') {
             const md = window.markdownit({
                 html: true, // Permettre le HTML dans le Markdown
             });
-            messageElement.innerHTML = md.render(message);
+            messageElement.innerHTML = md.render(processedMessage);
         } else {
             // Fallback si markdown-it n'est pas chargé
-            messageElement.innerHTML = message;
+            messageElement.innerHTML = processedMessage;
         }
         messageBubble.appendChild(messageElement);
     }
@@ -152,7 +175,7 @@ export function createMessageBubble(sender, message, imageUrl, audioUrl, userBub
     if (imageUrl) {
         const imageElement = document.createElement('img');
         // Gérer les URLs externes (Pollinations) et locales
-        imageElement.src = imageUrl.startsWith('http') ? imageUrl : `${API_BASE}${imageUrl}`;
+        imageElement.src = imageUrl;
         imageElement.classList.add('chat-image', 'rounded-lg', 'mt-2', 'cursor-pointer');
         imageElement.onclick = () => {
             modal.classList.remove('hidden');
@@ -164,7 +187,7 @@ export function createMessageBubble(sender, message, imageUrl, audioUrl, userBub
 
     if (audioUrl) {
         const audioElement = document.createElement('audio');
-        audioElement.src = `${API_BASE}${audioUrl}`;
+        audioElement.src = audioUrl;
         audioElement.controls = true;
         audioElement.classList.add('chat-audio', 'w-full', 'mt-2');
         messageBubble.appendChild(audioElement);
