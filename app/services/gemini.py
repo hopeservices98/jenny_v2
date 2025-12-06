@@ -6,26 +6,28 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import time
 import logging
+from bs4 import BeautifulSoup
 import re
 
-def process_custom_tags(text):
+def clean_html_response(ai_message):
     """
-    Traite les balises personnalisées comme <mot> pour les convertir en HTML.
-    Exemple: <salut> devient <span class="text-salut">salut</span>
+    Supprime toutes les balises HTML de la réponse de l'IA.
     """
-    # Expression régulière pour trouver les balises comme <mot>
-    # Elle capture le mot à l'intérieur des balises.
-    # Expression régulière pour trouver le format §couleur{mot}§
-    # Elle capture la couleur (ex: pink) et le mot (ex: mot)
-    pattern = re.compile(r"§(\w+)\{(.*?)\}§")
-    
-    # Fonction de remplacement qui utilise les deux groupes capturés
-    def replacer(match):
-        color = match.group(1)
-        content = match.group(2)
-        return f'<span class="text-{color}">{content}</span>'
+    if not ai_message:
+        return ""
         
-    return pattern.sub(replacer, text)
+    # Utilise BeautifulSoup pour analyser le HTML
+    soup = BeautifulSoup(ai_message, 'html.parser')
+    
+    # 1. get_text() extrait tout le texte et supprime toutes les balises.
+    #    separator=' ' garantit qu'il y a un espace entre les mots précédemment séparés par des balises.
+    clean_text = soup.get_text(separator=' ', strip=True)
+    
+    # 2. Nettoyage supplémentaire des espaces multiples ou des symboles indésirables
+    #    (comme les virgules seules si le modèle en ajoute).
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+    
+    return clean_text
 
 def call_gemini_memory_extractor(conversation_history, new_response):
     """
@@ -131,8 +133,7 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
             
             if response.status_code == 200:
                 result = response.json()
-                processed_text = process_custom_tags(result['choices'][0]['message']['content'])
-                return processed_text
+                return clean_html_response(result['choices'][0]['message']['content'])
             elif response.status_code == 402 or response.status_code == 429: # Payment Required or Too Many Requests
                 print(f"QUOTA OPENROUTER ATTEINT: {response.status_code}")
                 # On laisse le modèle gérer la réponse en se basant sur le prompt système
@@ -187,8 +188,7 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
         # --- VERIFICATION ANTI-PLANTAGE ---
         # Au lieu de planter si Google bloque, on vérifie s'il y a du texte
         if response.parts:
-            processed_text = process_custom_tags(response.text)
-            return processed_text
+            return clean_html_response(response.text)
         else:
             # Si Google a bloqué quand même (Finish Reason)
             print(f"DEBUG: Réponse bloquée. Finish Reason: {response.candidates[0].finish_reason}")
