@@ -15,12 +15,15 @@ def process_custom_tags(text):
     """
     # Expression régulière pour trouver les balises comme <mot>
     # Elle capture le mot à l'intérieur des balises.
-    pattern = re.compile(r"<(\w+)>")
+    # Expression régulière pour trouver des balises comme <pink>mot</pink>
+    # Elle capture le nom de la balise (ex: pink) et le contenu (ex: mot)
+    pattern = re.compile(r"<(\w+)>(.*?)</\1>")
     
-    # Fonction de remplacement qui utilise le mot capturé
+    # Fonction de remplacement qui utilise les deux groupes capturés
     def replacer(match):
-        word = match.group(1)
-        return f'<span class="text-{word}">{word}</span>'
+        tag_name = match.group(1)
+        content = match.group(2)
+        return f'<span class="text-{tag_name}">{content}</span>'
         
     return pattern.sub(replacer, text)
 
