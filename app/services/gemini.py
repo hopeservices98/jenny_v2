@@ -8,21 +8,6 @@ import time
 import logging
 import re
 
-def clean_html_response(ai_message):
-    """
-    Supprime les balises de type HTML de la réponse de l'IA en utilisant une expression régulière.
-    """
-    if not ai_message:
-        return ""
-    
-    # Remplace toute balise <...> ou </...> par une chaîne vide, en conservant le texte.
-    clean_text = re.sub(r'<[^>]+>', '', ai_message)
-    
-    # Nettoyage des espaces multiples qui pourraient résulter de la suppression des balises.
-    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-    
-    return clean_text
-
 def call_gemini_memory_extractor(conversation_history, new_response):
     """
     Appelle Gemini pour extraire les points clés d'une conversation.
@@ -127,7 +112,7 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
             
             if response.status_code == 200:
                 result = response.json()
-                return clean_html_response(result['choices'][0]['message']['content'])
+                return result['choices'][0]['message']['content']
             elif response.status_code == 402 or response.status_code == 429: # Payment Required or Too Many Requests
                 print(f"QUOTA OPENROUTER ATTEINT: {response.status_code}")
                 # On laisse le modèle gérer la réponse en se basant sur le prompt système
@@ -182,7 +167,7 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
         # --- VERIFICATION ANTI-PLANTAGE ---
         # Au lieu de planter si Google bloque, on vérifie s'il y a du texte
         if response.parts:
-            return clean_html_response(response.text)
+            return response.text
         else:
             # Si Google a bloqué quand même (Finish Reason)
             print(f"DEBUG: Réponse bloquée. Finish Reason: {response.candidates[0].finish_reason}")
