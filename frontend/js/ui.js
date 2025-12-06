@@ -137,7 +137,23 @@ export function createMessageBubble(sender, message, imageUrl, audioUrl, userBub
     if (message) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('text-white', 'text-sm');
-        messageElement.innerHTML = message;
+        let formattedMessage = message;
+        const colorMap = {
+            'pink': 'text-pink-500 font-bold',
+            'red': 'text-red-500',
+            'blue': 'text-blue-400',
+            'purple': 'text-purple-400 italic',
+            'yellow': 'text-yellow-400',
+        };
+        for (const color in colorMap) {
+            const regex = new RegExp(`<${color}>(.*?)</${color}>`, 'g');
+            formattedMessage = formattedMessage.replace(regex, `<span class="${colorMap[color]}">$1</span>`);
+        }
+        // Convertir les listes Markdown en HTML
+        formattedMessage = formattedMessage.replace(/\* (.*?)\n/g, '<li>$1</li>');
+        formattedMessage = formattedMessage.replace(/(\n)?(<li>.*<\/li>)/g, '<ul>$2</ul>');
+        
+        messageElement.innerHTML = formattedMessage;
         messageBubble.appendChild(messageElement);
     }
 
