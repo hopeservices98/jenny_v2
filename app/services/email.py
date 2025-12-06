@@ -9,38 +9,12 @@ import os
 import logging
 from datetime import datetime
 
-def load_brevo_smtp_password():
-    """Charge le mot de passe SMTP Brevo de manière sécurisée"""
-    # Essayer d'abord les variables d'environnement
-    smtp_password = os.environ.get('BREVO_SMTP_PASSWORD')
-    
-    if smtp_password:
-        return smtp_password
-    
-    # Fallback vers le fichier de configuration
-    try:
-        possible_paths = [
-            os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'brevo_key.txt')),
-            os.path.abspath('brevo_key.txt'),
-            'brevo_key.txt'
-        ]
-        
-        for brevo_config_path in possible_paths:
-            if os.path.exists(brevo_config_path):
-                with open(brevo_config_path, 'r') as f:
-                    file_key = f.read().strip()
-                    if file_key:
-                        print(f"INFO: Clé SMTP Brevo chargée depuis {brevo_config_path}")
-                        return file_key
-                    else:
-                        logging.error("Clé SMTP Brevo vide dans le fichier de configuration")
-                        break
-        else:
-            logging.error("Aucun fichier de clé SMTP Brevo trouvé")
-    except Exception as e:
-        logging.error(f"Erreur lors de la lecture de la clé SMTP Brevo: {e}")
-    
-    return None
+def get_smtp_credentials():
+    """Charge les identifiants SMTP depuis les variables d'environnement."""
+    return {
+        "username": os.environ.get('SMTP_USER'),
+        "password": os.environ.get('SMTP_PASSWORD')
+    }
 
 def send_verification_email(email, code):
     """
@@ -48,18 +22,17 @@ def send_verification_email(email, code):
     """
     try:
         # Charger le mot de passe SMTP
-        smtp_password = load_brevo_smtp_password()
+        credentials = get_smtp_credentials()
         
-        if not smtp_password:
-            # ERREUR si aucun mot de passe n'est disponible
-            logging.error("BREVO_SMTP_PASSWORD non configurée - IMPOSSIBLE D'ENVOYER L'EMAIL")
-            print(f"❌ ERREUR: Mot de passe SMTP Brevo manquant - Email NON envoyé à {email}")
+        if not credentials["username"] or not credentials["password"]:
+            logging.error("SMTP_USER ou SMTP_PASSWORD non configurées.")
+            print("❌ ERREUR: Identifiants SMTP manquants.")
             return False
         
-        # Configuration SMTP Brevo
-        smtp_server = "smtp-relay.brevo.com"
+        # Configuration SMTP
+        smtp_server = "mail.cip-rabemananjara.mg"
         smtp_port = 587
-        sender_email = "9d6e49001@smtp-brevo.com"
+        sender_email = "teste@cip-rabemananjara.mg"
         
         # Créer le message
         msg = MIMEMultipart("alternative")
@@ -125,7 +98,7 @@ def send_verification_email(email, code):
         context = ssl.create_default_context()
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls(context=context)
-            server.login(sender_email, smtp_password)
+            server.login(credentials["username"], credentials["password"])
             server.send_message(msg)
         
         logging.info(f"Email envoyé avec succès à {email}")
