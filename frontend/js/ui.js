@@ -139,11 +139,6 @@ export function createMessageBubble(sender, message, imageUrl, audioUrl, userBub
         
         let processedMessage = message;
 
-        // Initialiser markdown-it une seule fois
-        const md = new window.markdownit({
-            html: true, // Permettre le HTML dans le Markdown
-        });
-
         // Convertir nos balises personnalisées en HTML valide AVANT le rendu Markdown
         const colorMap = {
             'pink': 'text-pink-500 font-bold',
@@ -160,14 +155,15 @@ export function createMessageBubble(sender, message, imageUrl, audioUrl, userBub
         // Traiter les actions entre parenthèses et astérisques
         processedMessage = processedMessage.replace(/\*\((.*?)\)\*/g, '<span class="text-gray-400 italic">($1)</span>');
 
-        if (typeof window.markdownit !== 'undefined') {
-            const md = window.markdownit({
+        // S'assurer que markdownit est disponible avant de l'utiliser
+        if (typeof markdownit !== 'undefined') {
+            const md = new markdownit({
                 html: true, // Permettre le HTML dans le Markdown
             });
             messageElement.innerHTML = md.render(processedMessage);
         } else {
-            // Fallback si markdown-it n'est pas chargé
-            messageElement.innerHTML = processedMessage;
+            // Fallback si markdown-it n'est pas chargé, appliquer un formatage de base
+            messageElement.innerHTML = processedMessage.replace(/\n/g, '<br>');
         }
         messageBubble.appendChild(messageElement);
     }
