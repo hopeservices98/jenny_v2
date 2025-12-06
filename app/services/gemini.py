@@ -58,6 +58,7 @@ def call_gemini_memory_extractor(conversation_history, new_response):
 def call_gemini(message_history, mood='neutre', system_prompt_override=None, user=None):
     """
     Appelle l'API Gemini avec Jenny comme IA.
+    Retourne la réponse brute pour traitement par le frontend.
     """
     # 3. Préparation du Prompt
     from ..jenny import JENNY_SYSTEM_PROMPT
