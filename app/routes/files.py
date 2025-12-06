@@ -53,7 +53,12 @@ def register_files_routes(app):
         # Uploader vers Cloudinary
         import cloudinary.uploader
         try:
-            upload_result = cloudinary.uploader.upload(file)
+            # Pour les GIFs, on utilise un upload simple. Pour les autres images, on optimise.
+            if file.content_type == 'image/gif':
+                upload_result = cloudinary.uploader.upload(file, resource_type="image")
+            else:
+                upload_result = cloudinary.uploader.upload(file, resource_type="auto")
+
             url = upload_result.get('secure_url')
             if not url:
                 return jsonify({'error': 'Erreur lors de l\'upload vers Cloudinary'}), 500
