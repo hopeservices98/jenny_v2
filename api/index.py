@@ -106,7 +106,7 @@ def api_login():
             
             if password_is_valid:
                 login_user(user)
-                redirect_url = '/admin.html' if user.is_admin else '/home.html'
+                redirect_url = '/admin.html' if user.is_admin else '/index.html'
                 print(f"Connexion réussie. Redirection vers: {redirect_url}")
                 return jsonify({'redirect': redirect_url})
             else:
