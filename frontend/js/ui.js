@@ -137,7 +137,7 @@ export function createMessageBubble(sender, message, imageUrl, audioUrl, userBub
     if (message) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('text-white', 'text-sm');
-        messageElement.innerHTML = marked.parse(message);
+        messageElement.innerHTML = message;
         messageBubble.appendChild(messageElement);
     }
 
