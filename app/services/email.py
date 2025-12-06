@@ -63,7 +63,7 @@ def send_verification_email(email, code):
         
         # Créer le message
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Code de vérification - Jenny"
+        msg["Subject"] = "Votre code d'accès pour Jenny"
         msg["From"] = f"Jenny <{sender_email}>"
         msg["To"] = email
         
@@ -87,7 +87,7 @@ def send_verification_email(email, code):
                     
                     <p style="color: #6b7280; line-height: 1.6;">
                         Bonjour !<br>
-                        Pour compléter votre inscription sur Jenny, utilisez ce code de vérification :
+                        Voici votre code personnel pour accéder à votre compte Jenny :
                     </p>
                     
                     <div style="text-align: center; margin: 30px 0;">
