@@ -137,10 +137,15 @@ export function createMessageBubble(sender, message, imageUrl, audioUrl, userBub
     if (message) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('text-white', 'text-sm');
-        const md = window.markdownit({
-            html: true, // Permettre le HTML dans le Markdown
-        });
-        messageElement.innerHTML = md.render(message);
+        if (window.markdownit) {
+            const md = window.markdownit({
+                html: true, // Permettre le HTML dans le Markdown
+            });
+            messageElement.innerHTML = md.render(message);
+        } else {
+            // Fallback si markdown-it n'est pas chargé
+            messageElement.innerHTML = message;
+        }
         messageBubble.appendChild(messageElement);
     }
 
