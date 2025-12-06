@@ -42,7 +42,7 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     
     final_prompt = extraction_prompt.format(conversation=formatted_conversation, response=new_response)
     
-    model = genai.GenerativeModel(model_name="gemini-pro") # Utiliser un modèle plus léger pour l'extraction
+    model = genai.GenerativeModel(model_name="gemini-2.5-flash") # Utiliser un modèle plus léger pour l'extraction
     
     try:
         response = model.generate_content(final_prompt)
