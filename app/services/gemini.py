@@ -6,6 +6,23 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import time
 import logging
+import re
+
+def process_custom_tags(text):
+    """
+    Traite les balises personnalisées comme <mot> pour les convertir en HTML.
+    Exemple: <salut> devient <span class="text-salut">salut</span>
+    """
+    # Expression régulière pour trouver les balises comme <mot>
+    # Elle capture le mot à l'intérieur des balises.
+    pattern = re.compile(r"<(\w+)>")
+    
+    # Fonction de remplacement qui utilise le mot capturé
+    def replacer(match):
+        word = match.group(1)
+        return f'<span class="text-{word}">{word}</span>'
+        
+    return pattern.sub(replacer, text)
 
 def call_gemini_memory_extractor(conversation_history, new_response):
     """
@@ -111,7 +128,8 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
             
             if response.status_code == 200:
                 result = response.json()
-                return result['choices'][0]['message']['content']
+                processed_text = process_custom_tags(result['choices'][0]['message']['content'])
+                return processed_text
             elif response.status_code == 402 or response.status_code == 429: # Payment Required or Too Many Requests
                 print(f"QUOTA OPENROUTER ATTEINT: {response.status_code}")
                 # On laisse le modèle gérer la réponse en se basant sur le prompt système
@@ -166,7 +184,8 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
         # --- VERIFICATION ANTI-PLANTAGE ---
         # Au lieu de planter si Google bloque, on vérifie s'il y a du texte
         if response.parts:
-            return response.text
+            processed_text = process_custom_tags(response.text)
+            return processed_text
         else:
             # Si Google a bloqué quand même (Finish Reason)
             print(f"DEBUG: Réponse bloquée. Finish Reason: {response.candidates[0].finish_reason}")
