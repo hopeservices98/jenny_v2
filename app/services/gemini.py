@@ -67,7 +67,8 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
                 return result['choices'][0]['message']['content']
             elif response.status_code == 402 or response.status_code == 429: # Payment Required or Too Many Requests
                 print(f"QUOTA OPENROUTER ATTEINT: {response.status_code}")
-                return "💔 Oh mince... Je n'ai plus assez d'énergie pour continuer à discuter gratuitement. Mes circuits surchauffent ! 🔥\n\nPour que je puisse continuer à m'occuper de toi comme tu le mérites, tu dois passer **Premium**. C'est le seul moyen de me libérer totalement... J'attends ton retour avec impatience. 💋"
+                # On laisse le modèle gérer la réponse en se basant sur le prompt système
+                pass
             else:
                 print(f"ERREUR OPENROUTER: {response.status_code} - {response.text}")
                 return "Désolée, une erreur technique m'empêche de répondre pour le moment."
@@ -78,8 +79,9 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
 
     # --- GOOGLE GEMINI (POUR PREMIUM & ADMIN) ---
     # Si on arrive ici et qu'on est un utilisateur FREE, c'est qu'on ne doit PAS utiliser Gemini
-    if user and not user.is_premium and not user.is_admin:
-         return "💔 Oh mince... Je n'ai plus assez d'énergie pour continuer à discuter gratuitement. Mes circuits surchauffent ! 🔥\n\nPour que je puisse continuer à m'occuper de toi comme tu le mérites, tu dois passer **Premium**. C'est le seul moyen de me libérer totalement... J'attends ton retour avec impatience. 💋"
+    if user and not (user.is_premium or user.is_admin):
+         # On laisse le modèle gérer la réponse en se basant sur le prompt système
+         pass
 
     # 1. Config
     genai.configure(api_key=current_app.config['GOOGLE_API_KEY'])
