@@ -1,12 +1,11 @@
 import os
+import cloudinary
 
 def load_api_key_from_files():
     """Tries to load the Google API key from common files."""
-    # List of potential files, in order of priority
     key_files = ['google_cle.txt', 'cle_api.txt']
     for filename in key_files:
         try:
-            # Construct the full path relative to the app's root
             filepath = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', filename))
             if os.path.exists(filepath):
                 with open(filepath, 'r') as f:
@@ -58,8 +57,7 @@ class Config:
     # Session Config
     PERMANENT_SESSION_LIFETIME = 1800 # 30 minutes d'inactivité avant déconnexion
 
-    # Database - Configuration PostgreSQL Railway ou SQLite fallback
-    # Vercel utilise DATABASE_URL, Supabase fournit POSTGRES_URL. On vérifie les deux.
+    # Database - Configuration PostgreSQL ou SQLite fallback
     db_url_env = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
     
     if db_url_env:
@@ -68,7 +66,7 @@ class Config:
         SQLALCHEMY_DATABASE_URI = db_url.replace('postgres://', 'postgresql+psycopg2://')
         print(f"INFO: Base de données PostgreSQL externe configurée")
     elif os.environ.get('VERCEL'):
-        # Sur Vercel sans BDD Railway, utiliser SQLite temporaire
+        # Sur Vercel sans BDD, utiliser SQLite temporaire
         db_path = '/tmp/jenny_memory.db'
         SQLALCHEMY_DATABASE_URI = f'sqlite:///{db_path}'
         print(f"INFO: Base de données SQLite temporaire Vercel configurée")
@@ -86,31 +84,16 @@ class Config:
     IMAGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'images')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max upload
 
-
-    # Google Gemini API (backup)
+    # Google Gemini API
     GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY') or load_api_key_from_files()
     GOOGLE_MODEL = "gemini-2.5-flash"
 
     # getimg.ai API
     GETIMG_API_KEY = os.environ.get('GETIMG_API_KEY') or load_getimg_api_key()
     
-    # OpenRouter API (remplace Gemini)
+    # OpenRouter API
     OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY') or load_openrouter_api_key()
-    OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct"  # Modèle sans censure
-
-    # Local LLM (LM Studio)
-    USE_LOCAL_LLM = False
-    LOCAL_LLM_API_BASE = "http://192.168.0.106:1234/v1"
-    LOCAL_LLM_MODEL = "uncensored-phi-3-mini-4k-geminified"
-
-    # Image Directory
-    IMAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'images'))
-import cloudinary
-
-# ... (le reste du fichier)
-
-class Config:
-    # ... (les autres configurations)
+    OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct"
 
     # Configuration Cloudinary
     if 'CLOUDINARY_URL' in os.environ:
