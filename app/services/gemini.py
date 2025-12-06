@@ -6,25 +6,19 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import time
 import logging
-from bs4 import BeautifulSoup
 import re
 
 def clean_html_response(ai_message):
     """
-    Supprime toutes les balises HTML de la réponse de l'IA.
+    Supprime les balises de type HTML de la réponse de l'IA en utilisant une expression régulière.
     """
     if not ai_message:
         return ""
-        
-    # Utilise BeautifulSoup pour analyser le HTML
-    soup = BeautifulSoup(ai_message, 'html.parser')
     
-    # 1. get_text() extrait tout le texte et supprime toutes les balises.
-    #    separator=' ' garantit qu'il y a un espace entre les mots précédemment séparés par des balises.
-    clean_text = soup.get_text(separator=' ', strip=True)
+    # Remplace toute balise <...> ou </...> par une chaîne vide, en conservant le texte.
+    clean_text = re.sub(r'<[^>]+>', '', ai_message)
     
-    # 2. Nettoyage supplémentaire des espaces multiples ou des symboles indésirables
-    #    (comme les virgules seules si le modèle en ajoute).
+    # Nettoyage des espaces multiples qui pourraient résulter de la suppression des balises.
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
     
     return clean_text
