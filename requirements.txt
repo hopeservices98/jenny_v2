@@ -1,7 +1,7 @@
-Flask==2.2.2
-Werkzeug==2.2.3
+Flask==2.3.2
+Werkzeug==2.3.7
 requests
-Flask-SQLAlchemy
+Flask-SQLAlchemy==3.0.5
 google-generativeai
 Flask-Login
 openai>=1.0.0
@@ -9,3 +9,5 @@ Flask-Talisman
 Flask-Limiter
 python-dotenv
 urllib3
+psycopg2-binary==2.9.10
+pg8000

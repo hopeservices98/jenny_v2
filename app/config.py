@@ -58,16 +58,22 @@ class Config:
     # Session Config
     PERMANENT_SESSION_LIFETIME = 1800 # 30 minutes d'inactivité avant déconnexion
 
-    # Database - Configuration Vercel compatible
-    if os.environ.get('VERCEL'):
-        # Sur Vercel, utiliser le répertoire /tmp accessible en écriture
+    # Database - Configuration PostgreSQL Railway ou SQLite fallback
+    if os.environ.get('jenny_POSTGRES_URL'):
+        # Utiliser Supabase PostgreSQL
+        SQLALCHEMY_DATABASE_URI = os.environ.get('jenny_POSTGRES_URL').replace('postgres://', 'postgresql+psycopg2://')
+        print(f"INFO: Base de données Supabase configurée")
+    elif os.environ.get('VERCEL'):
+        # Sur Vercel sans BDD Railway, utiliser SQLite temporaire
         db_path = '/tmp/jenny_memory.db'
         SQLALCHEMY_DATABASE_URI = f'sqlite:///{db_path}'
+        print(f"INFO: Base de données SQLite temporaire Vercel configurée")
     else:
-        # En local, utiliser instance/
+        # En local, utiliser SQLite par défaut
         instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'instance')
         os.makedirs(instance_path, exist_ok=True)
         SQLALCHEMY_DATABASE_URI = f'sqlite:///{instance_path}/jenny_memory.db'
+        print(f"INFO: Base de données SQLite locale configurée")
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
