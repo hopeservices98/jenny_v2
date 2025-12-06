@@ -105,3 +105,18 @@ class Config:
 
     # Image Directory
     IMAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'images'))
+import cloudinary
+
+# ... (le reste du fichier)
+
+class Config:
+    # ... (les autres configurations)
+
+    # Configuration Cloudinary
+    if 'CLOUDINARY_URL' in os.environ:
+        cloudinary.config(
+            cloud_name=os.environ.get('CLOUDINARY_URL').split('@')[-1],
+            api_key=os.environ.get('CLOUDINARY_URL').split('//')[1].split(':')[0],
+            api_secret=os.environ.get('CLOUDINARY_URL').split(':')[2].split('@')[0]
+        )
+        print("INFO: Cloudinary configuré.")

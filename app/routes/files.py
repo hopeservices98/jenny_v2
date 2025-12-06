@@ -32,10 +32,6 @@ def register_files_routes(app):
         except FileNotFoundError:
             return jsonify({'url': None})
 
-    @app.route('/uploads/<path:filename>')
-    def serve_upload(filename):
-        upload_dir = os.path.join(current_app.root_path, '..', 'uploads')
-        return send_from_directory(upload_dir, filename)
 
     @app.route('/vid/<path:filename>')
     def serve_video(filename):
@@ -54,29 +50,16 @@ def register_files_routes(app):
         if file_type not in ['image', 'audio', 'avatar']:
             return jsonify({'error': 'Type de fichier invalide'}), 400
 
-        # Vérification de l'extension
-        allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.mp3', '.wav', '.ogg'}
-        ext = os.path.splitext(file.filename)[1].lower()
-        
-        if ext not in allowed_extensions:
-            return jsonify({'error': 'Type de fichier non autorisé'}), 400
-        
-        # Vérification du contenu réel (MIME type) pour plus de sécurité
-        if file_type in ['image', 'avatar'] and not file.content_type.startswith('image/'):
-             return jsonify({'error': 'Le fichier n\'est pas une image valide'}), 400
-        if file_type == 'audio' and not file.content_type.startswith('audio/'):
-             return jsonify({'error': 'Le fichier n\'est pas un audio valide'}), 400
-
-        # Créer le dossier uploads s'il n'existe pas
-        upload_dir = os.path.join(current_app.root_path, '..', 'uploads')
-        os.makedirs(upload_dir, exist_ok=True)
-
-        # Générer un nom unique
-        unique_filename = f"{uuid.uuid4()}{ext}"
-        file_path = os.path.join(upload_dir, unique_filename)
-        file.save(file_path)
-
-        url = f"/uploads/{unique_filename}"
+        # Uploader vers Cloudinary
+        import cloudinary.uploader
+        try:
+            upload_result = cloudinary.uploader.upload(file)
+            url = upload_result.get('secure_url')
+            if not url:
+                return jsonify({'error': 'Erreur lors de l\'upload vers Cloudinary'}), 500
+        except Exception as e:
+            logging.error(f"Erreur d'upload Cloudinary: {e}")
+            return jsonify({'error': 'Erreur serveur lors de l\'upload'}), 500
 
         if file_type == 'avatar':
             current_user.avatar_url = url
