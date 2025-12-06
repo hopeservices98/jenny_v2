@@ -97,9 +97,10 @@ class Config:
 
     # Configuration Cloudinary
     if 'CLOUDINARY_URL' in os.environ:
+        cloudinary_url = os.environ.get('CLOUDINARY_URL', '').replace('<', '').replace('>', '')
         cloudinary.config(
-            cloud_name=os.environ.get('CLOUDINARY_URL').split('@')[-1],
-            api_key=os.environ.get('CLOUDINARY_URL').split('//')[1].split(':')[0],
-            api_secret=os.environ.get('CLOUDINARY_URL').split(':')[2].split('@')[0]
+            cloud_name=cloudinary_url.split('@')[-1],
+            api_key=cloudinary_url.split('//')[1].split(':')[0],
+            api_secret=cloudinary_url.split(':')[2].split('@')[0]
         )
         print("INFO: Cloudinary configuré.")
