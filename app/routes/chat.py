@@ -3,10 +3,11 @@ from flask_login import login_required, current_user
 import time
 import random
 import logging
+from datetime import datetime # Importation pour le timestamp des souvenirs
 from .. import db, limiter
-from ..models import User
+from ..models import User, Memory # Importation du modèle Memory
 from ..jenny import KAMASUTRA_POSITIONS
-from ..services.gemini import call_gemini, generate_image_with_pollinations
+from ..services.gemini import call_gemini, generate_image_with_pollinations, call_gemini_memory_extractor # Nouvelle fonction pour l'extraction de mémoire
 
 def register_chat_routes(app):
     """Enregistre les routes de chat."""
@@ -27,14 +28,74 @@ def register_chat_routes(app):
 
         user = current_user
 
-        # --- BACKDOOR "MODE ANGELO" ---
-        if message.strip() == "Mine3472@":
-            user.is_premium = True
-            user.is_admin = True # Optionnel, mais "Angelo" sonne comme un super-admin
-            db.session.commit()
-            return jsonify({'response': "Mode Angelo activé. Vous êtes maintenant Premium et Administrateur. Profitez de Jenny sans limite.", 'image_url': None})
-        # ------------------------------
 
+        # Fonction pour sauvegarder les points clés de la conversation
+    def save_memory(user_id, conversation_history, response_from_gemini):
+        if user_id and (current_user.is_premium or current_user.is_admin):
+            try:
+                # Utiliser Gemini pour extraire les points clés
+                extracted_points = call_gemini_memory_extractor(conversation_history, response_from_gemini)
+                if extracted_points:
+                    for point_line in extracted_points.split('\n'):
+                        if point_line.strip():
+                            # Extraire la catégorie et le point clé
+                            if point_line.startswith('- [') and ']' in point_line:
+                                category_end_index = point_line.find(']')
+                                category = point_line[3:category_end_index].strip().lower()
+                                key_point_text = point_line[category_end_index + 1:].strip()
+                            else:
+                                category = "general"
+                                key_point_text = point_line.strip()
+                                
+                            if key_point_text:
+                                memory = Memory(user_id=user_id, key_point=key_point_text, category=category)
+                                db.session.add(memory)
+                    db.session.commit()
+                    logging.info(f"Mémoires sauvegardées pour l'utilisateur {user_id}.")
+            except Exception as e:
+                logging.error(f"Erreur lors de la sauvegarde de la mémoire pour l'utilisateur {user_id}: {e}")
+
+    # Fonction pour récupérer les souvenirs pertinents
+    def get_relevant_memories(user_id, current_message):
+        if user_id and (current_user.is_premium or current_user.is_admin):
+            # Prioriser les catégories "histoire" et "personnage"
+            prioritized_categories = ["histoire", "personnage"]
+            
+            # Récupérer les souvenirs prioritaires
+            prioritized_memories = Memory.query.filter_by(user_id=user_id)\
+                                                .filter(Memory.category.in_(prioritized_categories))\
+                                                .order_by(Memory.timestamp.desc())\
+                                                .limit(3).all() # Limite pour les prioritaires
+            
+            # Récupérer les souvenirs généraux (ou autres)
+            general_memories = Memory.query.filter_by(user_id=user_id)\
+                                            .filter(Memory.category.notin_(prioritized_categories))\
+                                            .order_by(Memory.timestamp.desc())\
+                                            .limit(max(0, 5 - len(prioritized_memories))).all() # Compléter jusqu'à 5
+
+            memories = prioritized_memories + general_memories
+            
+            if memories:
+                memories_text = "\n".join([f"- [{m.category.capitalize()}] {m.key_point}" for m in memories])
+                return f"\n\n[SOUVENIRS DE JENNY AVEC L'UTILISATEUR (par ordre de pertinence/priorité)]:\n{memories_text}\n"
+        return ""
+
+    @app.route('/chat', methods=['POST'])
+    @login_required
+    @limiter.limit("20 per minute") # Limite raisonnable pour une conversation fluide mais pas abusive
+    def chat():
+        start_time = time.time()
+        data = request.json
+        message = data.get('message', '')
+        image_url = data.get('image_url')
+        audio_url = data.get('audio_url')
+        message_lower = message.lower()
+
+        if not message:
+            return jsonify({'error': 'Message est requis'}), 400
+
+        user = current_user
+        
         if random.random() < 0.2:
             user.mood = random.choice(list(["neutre", "taquine", "directive", "douce"]))
 
@@ -66,18 +127,15 @@ def register_chat_routes(app):
             else:
                 prompt_context = ""
                 
+                # Récupérer les souvenirs pertinents pour les utilisateurs Premium/Admin
+                memories_context = get_relevant_memories(user.id, message)
+                prompt_context += memories_context
+                
                 # Logique Premium pour les images et le Kamasutra
-                if user.is_premium:
+                if user.is_premium or user.is_admin:
                     if any(w in message_lower for w in ["position", "kamasutra", "idée"]):
                         position = random.choice(KAMASUTRA_POSITIONS)
-                        prompt_context = f"\n(Contexte: Propose d'analyser la position : {position['name']}. Description : {position['description']})"
-                    # On laisse le modèle décider de générer une image via le tag [GENERATE_IMAGE]
-                    # Mais on garde l'ancienne logique pour les demandes simples si le modèle ne génère pas le tag
-                    elif any(w in message_lower for w in ["image", "photo", "montre", "nude", "voir"]) and "génère" not in message_lower:
-                         # Si l'utilisateur demande explicitement "génère", on laisse le prompt faire.
-                         # Sinon, on peut piocher dans les images existantes pour aller plus vite, ou laisser le modèle choisir.
-                         # Pour l'instant, on laisse le modèle gérer via le prompt système mis à jour.
-                         pass
+                        prompt_context += f"\n(Contexte: Propose d'analyser la position : {position['name']}. Description : {position['description']})"
                 else:
                     # Logique Free : Incrémenter le step d'interaction pour augmenter la pression
                     if user.interaction_step is None:
@@ -86,7 +144,7 @@ def register_chat_routes(app):
                     if user.interaction_step > 10: user.interaction_step = 10 # Plafond
                     
                     if any(w in message_lower for w in ["image", "photo", "montre", "nude", "voir", "position", "kamasutra"]):
-                        prompt_context = "\n(Contexte: L'utilisateur demande du contenu Premium. REFUSE en jouant la frustration et incite-le à passer Premium pour te 'libérer'.)"
+                        prompt_context += "\n(Contexte: L'utilisateur demande du contenu Premium. REFUSE en jouant la frustration et incite-le à passer Premium pour te 'libérer'.)"
 
                 history[-1]["content"] += prompt_context
                 gemini_start = time.time()
@@ -116,6 +174,9 @@ def register_chat_routes(app):
         # ---------------------------------------
 
         history.append({"role": "assistant", "content": response_text})
+        
+        # Sauvegarder les points clés de la conversation pour les utilisateurs Premium/Admin
+        save_memory(user.id, history, response_text)
 
         # Détecter la fin de l'histoire et arrêter l'enregistrement
         end_words = ["finissons", "terminons", "fin de l'histoire", "arrêtons", "stop", "fini", "c'est fini", "finissons là"]

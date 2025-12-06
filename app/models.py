@@ -2,6 +2,7 @@ from . import db
 import json
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime # Importation nécessaire pour le timestamp de Memory
 
 class User(db.Model, UserMixin):
     """Model for user accounts."""
@@ -46,3 +47,19 @@ class User(db.Model, UserMixin):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+class Memory(db.Model):
+    """Model for storing key memories/discussion points for users."""
+    __tablename__ = 'memories'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    key_point = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(100), default="general") # e.g., "story", "preference", "event"
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relation avec l'utilisateur
+    user = db.relationship('User', backref=db.backref('memories', lazy=True))
+
+    def __repr__(self):
+        return f'<Memory {self.id} for User {self.user_id}: {self.key_point[:50]}>'

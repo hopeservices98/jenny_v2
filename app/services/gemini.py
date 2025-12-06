@@ -7,6 +7,53 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import time
 import logging
 
+def call_gemini_memory_extractor(conversation_history, new_response):
+    """
+    Appelle Gemini pour extraire les points clés d'une conversation.
+    """
+    genai.configure(api_key=current_app.config['GOOGLE_API_KEY'])
+    
+    extraction_prompt = """
+    Tu es un extracteur de points clés de conversation pour Jenny. Ton rôle est d'analyser la conversation fournie (historique et dernière réponse) et d'en extraire les informations les plus importantes, intimes, ou récurrentes concernant l'utilisateur.
+
+    Chaque point clé doit être une phrase concise et informative, suivie d'une catégorie pertinente (histoire, personnage, préférence, général, émotion, etc.).
+
+    Format de sortie :
+    - [Catégorie] Point clé 1.
+    - [Catégorie] Point clé 2.
+    - [Catégorie] Point clé 3.
+
+    Exemple de sortie :
+    - [Préférence] L'utilisateur aime les chats et a un chat nommé "Moustache".
+    - [Histoire] L'utilisateur a mentionné un souvenir d'enfance lié à la plage.
+    - [Général] L'utilisateur est intéressé par la psychologie.
+    - [Émotion] L'utilisateur se sent seul.
+
+    CONVERSATION :
+    {conversation}
+
+    DERNIÈRE RÉPONSE DE JENNY :
+    {response}
+
+    POINTS CLÉS EXTRAITS :
+    """
+    
+    formatted_conversation = "\n".join([f"{item['role']}: {item['content']}" for item in conversation_history])
+    
+    final_prompt = extraction_prompt.format(conversation=formatted_conversation, response=new_response)
+    
+    model = genai.GenerativeModel(model_name="gemini-pro") # Utiliser un modèle plus léger pour l'extraction
+    
+    try:
+        response = model.generate_content(final_prompt)
+        if response.parts:
+            return response.text
+        else:
+            logging.warning("Gemini n'a pas pu extraire de points clés.")
+            return None
+    except Exception as e:
+        logging.error(f"Erreur lors de l'extraction de mémoire par Gemini: {e}")
+        return None
 def call_gemini(message_history, mood='neutre', system_prompt_override=None, user=None):
     """
     Appelle l'API Gemini avec Jenny comme IA.
