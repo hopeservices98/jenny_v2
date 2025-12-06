@@ -147,10 +147,16 @@ export function createMessageBubble(sender, message, imageUrl, audioUrl, userBub
             'purple': 'text-purple-400 italic',
             'yellow': 'text-yellow-400',
         };
+        
+        // 1. Remplacer les couleurs connues
         for (const color in colorMap) {
             const regex = new RegExp(`<${color}>(.*?)</${color}>`, 'g');
             processedMessage = processedMessage.replace(regex, `<span class="${colorMap[color]}">$1</span>`);
         }
+
+        // 2. Attraper toutes les autres balises inconnues (ex: <malicieux>) et les mettre en rose par défaut
+        // Cela évite d'afficher du HTML cassé si l'IA invente des balises
+        processedMessage = processedMessage.replace(/<(\w+)>(.*?)<\/\1>/g, '<span class="text-pink-400 italic">$2</span>');
         
         // Traiter les actions entre parenthèses et astérisques
         processedMessage = processedMessage.replace(/\*\((.*?)\)\*/g, '<span class="text-gray-400 italic">($1)</span>');
