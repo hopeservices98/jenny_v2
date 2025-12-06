@@ -1,5 +1,6 @@
 // API utilities
-const API_BASE = 'http://127.0.0.1:5000';
+// Utiliser une URL relative pour que cela fonctionne en local et en production
+const API_BASE = '';
 
 export async function fetchJSON(url, options = {}) {
     const response = await fetch(`${API_BASE}${url}`, {
