@@ -61,7 +61,9 @@ class Config:
     # Database - Configuration PostgreSQL Railway ou SQLite fallback
     if os.environ.get('jenny_POSTGRES_URL'):
         # Utiliser Supabase PostgreSQL
-        SQLALCHEMY_DATABASE_URI = os.environ.get('POSTGRES_URL').replace('postgres://', 'postgresql+psycopg2://')
+        # Supprimer le paramètre 'supa' non standard de l'URL
+        db_url = os.environ.get('POSTGRES_URL', '').split('?')[0]
+        SQLALCHEMY_DATABASE_URI = db_url.replace('postgres://', 'postgresql+psycopg2://')
         print(f"INFO: Base de données Supabase configurée")
     elif os.environ.get('VERCEL'):
         # Sur Vercel sans BDD Railway, utiliser SQLite temporaire
