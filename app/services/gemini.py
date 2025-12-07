@@ -8,26 +8,20 @@ import time
 import logging
 import re
 
-def _call_openrouter_internal(message_history, system_instruction):
-    """Fonction interne pour appeler OpenRouter (Llama 3)."""
+def _call_openrouter_generic(messages, temperature=0.8, max_tokens=1000):
+    """Fonction générique pour appeler OpenRouter."""
     if not current_app.config.get('OPENROUTER_API_KEY'):
+        logging.error("Clé API OpenRouter manquante.")
         return None
         
     try:
         import requests
         
-        messages = [{"role": "system", "content": system_instruction}]
-        # Limiter l'historique pour OpenRouter pour économiser des tokens
-        recent_history = message_history[-15:] if len(message_history) > 15 else message_history
-        
-        for item in recent_history:
-            messages.append({"role": item["role"], "content": item["content"]})
-        
         payload = {
             "model": current_app.config['OPENROUTER_MODEL'],
             "messages": messages,
-            "temperature": 0.8,
-            "max_tokens": 500,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
         }
         
         headers = {
@@ -46,10 +40,12 @@ def _call_openrouter_internal(message_history, system_instruction):
         
         if response.status_code == 200:
             result = response.json()
-            ai_message = result['choices'][0]['message']['content']
-            clean_message = re.sub(r'\s{2,}', ' ', ai_message)
-            clean_message = clean_message.replace(' , ', ' ')
-            return clean_message.strip()
+            if 'choices' in result and len(result['choices']) > 0:
+                ai_message = result['choices'][0]['message']['content']
+                return ai_message.strip()
+            else:
+                logging.error(f"Réponse OpenRouter vide ou malformée: {result}")
+                return None
         else:
             logging.error(f"ERREUR OPENROUTER: {response.status_code} - {response.text}")
             return None
@@ -58,12 +54,27 @@ def _call_openrouter_internal(message_history, system_instruction):
         logging.error(f"EXCEPTION OPENROUTER: {e}")
         return None
 
+def _call_openrouter_internal(message_history, system_instruction):
+    """Fonction interne pour appeler OpenRouter (DeepSeek) pour le chat."""
+    messages = [{"role": "system", "content": system_instruction}]
+    # Limiter l'historique pour OpenRouter pour économiser des tokens
+    recent_history = message_history[-20:] if len(message_history) > 20 else message_history
+    
+    for item in recent_history:
+        messages.append({"role": item["role"], "content": item["content"]})
+    
+    response = _call_openrouter_generic(messages, temperature=0.8, max_tokens=500)
+    
+    if response:
+        clean_message = re.sub(r'\s{2,}', ' ', response)
+        clean_message = clean_message.replace(' , ', ' ')
+        return clean_message.strip()
+    return None
+
 def call_gemini_memory_extractor(conversation_history, new_response):
     """
-    Appelle Gemini pour extraire les points clés d'une conversation.
+    Appelle OpenRouter (DeepSeek) pour extraire les points clés d'une conversation.
     """
-    genai.configure(api_key=current_app.config['GOOGLE_API_KEY'])
-    
     extraction_prompt = """
     Tu es un extracteur de points clés de conversation pour Jenny. Ton rôle est d'analyser la conversation fournie (historique et dernière réponse) et d'en extraire les informations les plus importantes, intimes, ou récurrentes concernant l'utilisateur.
 
@@ -90,43 +101,16 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     """
     
     formatted_conversation = "\n".join([f"{item['role']}: {item['content']}" for item in conversation_history])
-    
     final_prompt = extraction_prompt.format(conversation=formatted_conversation, response=new_response)
     
-    # Réglages de sécurité permissifs pour l'extraction
-    safety_settings = {
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-    }
-
-    model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash-exp",
-        safety_settings=safety_settings
-    )
+    messages = [{"role": "user", "content": final_prompt}]
     
-    try:
-        response = model.generate_content(final_prompt)
-        # Vérification robuste de la réponse
-        if response and hasattr(response, 'parts') and response.parts:
-            return response.text
-        elif response and hasattr(response, 'prompt_feedback'):
-             logging.warning(f"Extraction mémoire bloquée. Feedback: {response.prompt_feedback}")
-             return None
-        else:
-            logging.warning("Gemini n'a pas pu extraire de points clés (réponse vide).")
-            return None
-    except Exception as e:
-        logging.error(f"Erreur lors de l'extraction de mémoire par Gemini: {e}")
-        return None
+    return _call_openrouter_generic(messages, temperature=0.3, max_tokens=500)
 
 def update_story_context(current_context, conversation_history, last_response):
     """
-    Met à jour le contexte narratif global (Mémoire Longue).
+    Met à jour le contexte narratif global (Mémoire Longue) via OpenRouter (DeepSeek).
     """
-    genai.configure(api_key=current_app.config['GOOGLE_API_KEY'])
-    
     update_prompt = """
     Tu es le Gardien de la Mémoire de l'histoire. Ton rôle est de mettre à jour le "Story Context" (le résumé narratif permanent) en fonction des derniers échanges.
 
@@ -158,27 +142,10 @@ def update_story_context(current_context, conversation_history, last_response):
         response=last_response
     )
     
-    # Réglages de sécurité permissifs pour la mise à jour du contexte
-    safety_settings = {
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-    }
-
-    model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash-exp",
-        safety_settings=safety_settings
-    )
+    messages = [{"role": "user", "content": final_prompt}]
     
-    try:
-        response = model.generate_content(final_prompt)
-        if response.parts:
-            return response.text.strip()
-        return current_context
-    except Exception as e:
-        logging.error(f"Erreur mise à jour StoryContext: {e}")
-        return current_context
+    response = _call_openrouter_generic(messages, temperature=0.3, max_tokens=1000)
+    return response if response else current_context
 
 def call_gemini(message_history, mood='neutre', system_prompt_override=None, user=None):
     """
