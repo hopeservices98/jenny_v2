@@ -63,3 +63,18 @@ class Memory(db.Model):
 
     def __repr__(self):
         return f'<Memory {self.id} for User {self.user_id}: {self.key_point[:50]}>'
+
+class StoryContext(db.Model):
+    """Model for storing the long-term narrative context (Mémoire Longue)."""
+    __tablename__ = 'story_contexts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    content = db.Column(db.Text, nullable=False, default="") # Le résumé narratif permanent
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relation avec l'utilisateur (One-to-One)
+    user = db.relationship('User', backref=db.backref('story_context', uselist=False, lazy=True))
+
+    def __repr__(self):
+        return f'<StoryContext User {self.user_id}>'

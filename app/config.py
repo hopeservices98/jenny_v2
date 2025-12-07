@@ -86,7 +86,7 @@ class Config:
 
     # Google Gemini API
     GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY') or load_api_key_from_files()
-    GOOGLE_MODEL = "gemini-2.5-flash"
+    GOOGLE_MODEL = "gemini-2.5-pro"
 
     # getimg.ai API
     GETIMG_API_KEY = os.environ.get('GETIMG_API_KEY') or load_getimg_api_key()

@@ -43,7 +43,7 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     
     final_prompt = extraction_prompt.format(conversation=formatted_conversation, response=new_response)
     
-    model = genai.GenerativeModel(model_name="gemini-2.5-flash") # Utiliser un modèle plus léger pour l'extraction
+    model = genai.GenerativeModel(model_name="gemini-2.5-pro") # Utiliser un modèle plus performant pour l'extraction
     
     try:
         response = model.generate_content(final_prompt)
@@ -55,6 +55,54 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     except Exception as e:
         logging.error(f"Erreur lors de l'extraction de mémoire par Gemini: {e}")
         return None
+def update_story_context(current_context, conversation_history, last_response):
+    """
+    Met à jour le contexte narratif global (Mémoire Longue).
+    """
+    genai.configure(api_key=current_app.config['GOOGLE_API_KEY'])
+    
+    update_prompt = """
+    Tu es le Gardien de la Mémoire de l'histoire. Ton rôle est de mettre à jour le "Story Context" (le résumé narratif permanent) en fonction des derniers échanges.
+
+    CONTEXTE ACTUEL :
+    {current_context}
+
+    DERNIERS ÉCHANGES :
+    {conversation}
+    Jenny: {response}
+
+    TA MISSION :
+    Mets à jour le contexte actuel pour refléter l'évolution de l'histoire.
+    - Garde les faits fondamentaux (noms, lieux, relations clés).
+    - Mets à jour l'état émotionnel et la situation actuelle.
+    - Ajoute les nouveaux événements importants.
+    - Supprime les détails triviaux ou obsolètes pour garder un résumé concis mais complet.
+    - Le texte doit être à la troisième personne, décrivant l'état de la relation entre Jenny et l'utilisateur.
+
+    NOUVEAU CONTEXTE (Texte brut uniquement) :
+    """
+    
+    # On prend les 3 derniers échanges pour le contexte immédiat
+    recent_history = conversation_history[-3:]
+    formatted_conversation = "\n".join([f"{item['role']}: {item['content']}" for item in recent_history])
+    
+    final_prompt = update_prompt.format(
+        current_context=current_context or "Début de l'histoire.",
+        conversation=formatted_conversation,
+        response=last_response
+    )
+    
+    model = genai.GenerativeModel(model_name="gemini-2.5-pro")
+    
+    try:
+        response = model.generate_content(final_prompt)
+        if response.parts:
+            return response.text.strip()
+        return current_context
+    except Exception as e:
+        logging.error(f"Erreur mise à jour StoryContext: {e}")
+        return current_context
+
 def call_gemini(message_history, mood='neutre', system_prompt_override=None, user=None):
     """
     Appelle l'API Gemini avec Jenny comme IA.
@@ -70,6 +118,11 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
     if user:
         status = "PREMIUM" if user.is_premium or user.is_admin else "FREE"
         user_context = f"\n\n[CONTEXTE UTILISATEUR]\nStatut: {status}\nNom: {user.first_name or user.username}"
+        
+        # Injection de la Mémoire Longue (StoryContext) pour les Premium
+        if (user.is_premium or user.is_admin) and hasattr(user, 'story_context') and user.story_context:
+            user_context += f"\n\n[MÉMOIRE LONGUE / CONTEXTE NARRATIF]\n{user.story_context.content}\n"
+            
         if not user.is_premium:
             user_context += f"\nPhase de séduction actuelle: {user.interaction_step}/10 (Plus le chiffre est haut, plus tu dois teaser/frustrer)"
 

@@ -5,9 +5,9 @@ import random
 import logging
 from datetime import datetime
 from .. import db, limiter
-from ..models import User, Memory
+from ..models import User, Memory, StoryContext
 from ..jenny import KAMASUTRA_POSITIONS
-from ..services.gemini import call_gemini, generate_image_with_pollinations, call_gemini_memory_extractor
+from ..services.gemini import call_gemini, generate_image_with_pollinations, call_gemini_memory_extractor, update_story_context
 
 chat_bp = Blueprint('chat_bp', __name__)
 
@@ -36,22 +36,53 @@ def save_memory(user_id, conversation_history, response_from_gemini):
 
 def get_relevant_memories(user_id, current_message):
     if user_id and (current_user.is_premium or current_user.is_admin):
+        # 1. Recherche contextuelle basique (mots clés)
+        context_memories = []
+        if len(current_message) > 5:
+            # Extraire des mots significatifs (très basique, > 4 lettres)
+            words = [w for w in current_message.lower().split() if len(w) > 4]
+            if words:
+                # Construire une requête OR pour les mots clés
+                from sqlalchemy import or_
+                filters = [Memory.key_point.ilike(f"%{word}%") for word in words]
+                if filters:
+                    context_memories = Memory.query.filter_by(user_id=user_id)\
+                                        .filter(or_(*filters))\
+                                        .order_by(Memory.timestamp.desc())\
+                                        .limit(5).all()
+
+        # 2. Souvenirs prioritaires (Histoire/Personnage)
         prioritized_categories = ["histoire", "personnage"]
-        
         prioritized_memories = Memory.query.filter_by(user_id=user_id)\
                                             .filter(Memory.category.in_(prioritized_categories))\
                                             .order_by(Memory.timestamp.desc())\
-                                            .limit(3).all()
+                                            .limit(5).all()
         
-        general_memories = Memory.query.filter_by(user_id=user_id)\
-                                        .filter(Memory.category.notin_(prioritized_categories))\
-                                        .order_by(Memory.timestamp.desc())\
-                                        .limit(max(0, 5 - len(prioritized_memories))).all()
+        # 3. Souvenirs récents généraux
+        # On exclut ceux déjà trouvés pour éviter les doublons
+        existing_ids = [m.id for m in context_memories + prioritized_memories]
+        
+        # Calculer combien il en reste pour atteindre environ 15 au total
+        remaining_slots = 15 - len(context_memories) - len(prioritized_memories)
+        
+        general_memories = []
+        if remaining_slots > 0:
+            general_memories = Memory.query.filter_by(user_id=user_id)\
+                                            .filter(Memory.id.notin_(existing_ids))\
+                                            .order_by(Memory.timestamp.desc())\
+                                            .limit(remaining_slots).all()
 
-        memories = prioritized_memories + general_memories
+        # Combiner et dédoublonner
+        all_memories = context_memories + prioritized_memories + general_memories
+        unique_memories = []
+        seen_ids = set()
+        for m in all_memories:
+            if m.id not in seen_ids:
+                unique_memories.append(m)
+                seen_ids.add(m.id)
         
-        if memories:
-            memories_text = "\n".join([f"- [{m.category.capitalize()}] {m.key_point}" for m in memories])
+        if unique_memories:
+            memories_text = "\n".join([f"- [{m.category.capitalize()}] {m.key_point}" for m in unique_memories])
             return f"\n\n[SOUVENIRS DE JENNY AVEC L'UTILISATEUR (par ordre de pertinence/priorité)]:\n{memories_text}\n"
     return ""
 
@@ -144,6 +175,26 @@ def chat():
     history.append({"role": "assistant", "content": response_text})
     
     save_memory(user.id, history, response_text)
+
+    # Mise à jour de la Mémoire Longue (StoryContext) pour Premium/Admin
+    if user.is_premium or user.is_admin:
+        try:
+            # Récupérer ou créer le contexte
+            story_context = StoryContext.query.filter_by(user_id=user.id).first()
+            if not story_context:
+                story_context = StoryContext(user_id=user.id, content="")
+                db.session.add(story_context)
+            
+            # Mettre à jour via Gemini
+            new_content = update_story_context(story_context.content, history, response_text)
+            
+            if new_content and new_content != story_context.content:
+                story_context.content = new_content
+                story_context.last_updated = datetime.utcnow()
+                db.session.commit()
+                logging.info(f"StoryContext mis à jour pour l'utilisateur {user.id}")
+        except Exception as e:
+            logging.error(f"Erreur lors de la mise à jour du StoryContext: {e}")
 
     end_words = ["finissons", "terminons", "fin de l'histoire", "arrêtons", "stop", "fini", "c'est fini", "finissons là"]
     if any(word in message_lower for word in end_words):
