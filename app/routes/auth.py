@@ -49,6 +49,19 @@ def register_auth_routes(app):
             return jsonify({'message': 'Code envoyé avec succès'})
         else:
             return jsonify({'error': 'Erreur lors de l\'envoi du code. Veuillez réessayer.'}), 500
+    @app.route('/auth/verify-code', methods=['POST'])
+    def verify_code_check():
+        data = request.get_json()
+        email = data.get('email')
+        code = data.get('code')
+        
+        if not email or not code:
+            return jsonify({'valid': False, 'message': 'Données incomplètes'}), 400
+            
+        if email in pending_verifications and pending_verifications[email] == code:
+            return jsonify({'valid': True, 'message': 'Code valide !'})
+        else:
+            return jsonify({'valid': False, 'message': 'Code invalide'}), 200
 
     @app.route('/login', methods=['GET', 'POST'])
     @limiter.limit("5 per minute") # Limite à 5 tentatives par minute pour éviter le brute-force

@@ -32,6 +32,7 @@ sendCodeBtn.addEventListener('click', async () => {
         if (response.ok) {
             errorMessage.className = 'sexy-alert success';
             errorMessage.textContent = 'Code envoyé ! Vérifiez votre email.';
+            errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
             verificationCodeContainer.classList.remove('hidden');
             
             // Réactiver le bouton après 60s
@@ -50,6 +51,7 @@ sendCodeBtn.addEventListener('click', async () => {
             console.error('Erreur send-code:', data);
             errorMessage.className = 'sexy-alert error';
             errorMessage.textContent = data.error || 'Erreur lors de l\'envoi du code.';
+            errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
             sendCodeBtn.disabled = false;
             sendCodeBtn.textContent = 'Envoyer code';
             sendCodeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -58,6 +60,7 @@ sendCodeBtn.addEventListener('click', async () => {
         console.error('Erreur:', error);
         errorMessage.className = 'sexy-alert error';
         errorMessage.textContent = 'Erreur de connexion.';
+        errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
         sendCodeBtn.disabled = false;
         sendCodeBtn.textContent = 'Envoyer code';
         sendCodeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -113,6 +116,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
         // Afficher le message de succès et rediriger vers login après un délai
         errorMessage.className = 'sexy-alert success';
         errorMessage.textContent = data.message || 'Inscription réussie ! Redirection...';
+        errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(() => {
             window.location.href = '/login';
         }, 3000);
@@ -124,6 +128,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
         } else {
             errorMessage.textContent = data.error || 'Une erreur est survenue.';
         }
+        errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 });
 function setupPasswordToggle(toggleId, inputId) {
@@ -150,6 +155,47 @@ function setupPasswordToggle(toggleId, inputId) {
 setupPasswordToggle('toggle-password', 'password');
 setupPasswordToggle('toggle-confirm-password', 'confirm_password');
 
+
+// Vérification en temps réel du code
+const verificationCodeInput = document.getElementById('verification_code');
+
+verificationCodeInput.addEventListener('input', async (e) => {
+    const code = e.target.value;
+    const email = document.getElementById('email').value;
+    
+    if (code.length === 6) {
+        try {
+            const response = await fetch('/auth/verify-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, code })
+            });
+            const data = await response.json();
+            
+            if (data.valid) {
+                verificationCodeInput.classList.remove('focus:ring-green-500', 'focus:ring-red-500', 'border-red-500');
+                verificationCodeInput.classList.add('border-green-500', 'ring-2', 'ring-green-500');
+                errorMessage.className = 'sexy-alert success';
+                errorMessage.textContent = 'Code valide !';
+            } else {
+                verificationCodeInput.classList.remove('focus:ring-green-500', 'border-green-500', 'ring-green-500');
+                verificationCodeInput.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                errorMessage.className = 'sexy-alert error';
+                errorMessage.textContent = 'Code invalide.';
+            }
+        } catch (error) {
+            console.error('Erreur vérification code:', error);
+        }
+    } else {
+        // Reset styles si < 6 chars
+        verificationCodeInput.classList.remove('border-green-500', 'ring-green-500', 'border-red-500', 'ring-red-500');
+        verificationCodeInput.classList.add('focus:ring-green-500');
+        if (errorMessage.textContent === 'Code valide !' || errorMessage.textContent === 'Code invalide.') {
+            errorMessage.textContent = '';
+            errorMessage.className = '';
+        }
+    }
+});
 
 // Vérification en temps réel des mots de passe
 const passwordInput = document.getElementById('password');
