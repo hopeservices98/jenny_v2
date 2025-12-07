@@ -249,16 +249,52 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
         logging.info(f"Utilisateur Premium {user.id}: Appel Gemini Pro")
         response = _call_google_gemini(message_history, full_system_instruction)
         
-    # 2. FREE -> OpenAI
+    # 2. FREE -> OpenAI (ou OpenRouter si pas de clé OpenAI)
     else:
-        logging.info(f"Utilisateur Free {user.id if user else 'Anonyme'}: Appel OpenAI")
-        # Préparation des messages pour OpenAI
-        messages = [{"role": "system", "content": full_system_instruction}]
-        recent_history = message_history[-20:] if len(message_history) > 20 else message_history
-        for item in recent_history:
-            messages.append({"role": item["role"], "content": item["content"]})
+        logging.info(f"Utilisateur Free {user.id if user else 'Anonyme'}: Appel IA Free")
+        
+        # Si clé OpenAI présente -> OpenAI
+        if current_app.config.get('OPENAI_API_KEY'):
+            logging.info("Utilisation OpenAI Direct")
+            messages = [{"role": "system", "content": full_system_instruction}]
+            recent_history = message_history[-20:] if len(message_history) > 20 else message_history
+            for item in recent_history:
+                messages.append({"role": item["role"], "content": item["content"]})
+            response = _call_openai_generic(messages)
             
-        response = _call_openai_generic(messages)
+        # Sinon -> OpenRouter (Fallback Free)
+        else:
+            logging.info("Pas de clé OpenAI -> Utilisation OpenRouter")
+            # On réutilise la fonction interne existante pour OpenRouter
+            # Note: _call_openrouter_internal utilise en fait _call_deepseek_generic mais avec la config OpenRouter si adaptée
+            # Mais attendez, _call_openrouter_internal appelle _call_deepseek_generic qui utilise DEEPSEEK_API_KEY
+            # Il faut s'assurer qu'on utilise bien OPENROUTER_API_KEY
+            
+            # On va créer un appel spécifique OpenRouter ici pour être sûr
+            api_key = current_app.config.get('OPENROUTER_API_KEY')
+            if api_key:
+                try:
+                    import requests
+                    headers = {
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://jenny-ai.com",
+                    }
+                    payload = {
+                        "model": current_app.config.get('OPENROUTER_MODEL', 'deepseek/deepseek-chat'),
+                        "messages": [{"role": "system", "content": full_system_instruction}] + message_history[-20:],
+                        "temperature": 0.8,
+                        "max_tokens": 500
+                    }
+                    r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=60)
+                    if r.status_code == 200:
+                        response = r.json()['choices'][0]['message']['content']
+                    else:
+                        logging.error(f"Erreur OpenRouter: {r.text}")
+                except Exception as e:
+                    logging.error(f"Exception OpenRouter: {e}")
+            else:
+                logging.error("Aucune clé API disponible pour le mode Free (ni OpenAI, ni OpenRouter)")
 
     if response:
         # Nettoyage agressif des balises HTML cassées
