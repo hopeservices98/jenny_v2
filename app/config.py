@@ -95,6 +95,10 @@ class Config:
     OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY') or load_openrouter_api_key()
     OPENROUTER_MODEL = "deepseek/deepseek-chat"
 
+    # DeepSeek API (Direct)
+    DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
+    DEEPSEEK_MODEL = "deepseek-chat"
+
     # Configuration Cloudinary
     if 'CLOUDINARY_URL' in os.environ:
         cloudinary_url = os.environ.get('CLOUDINARY_URL', '').replace('<', '').replace('>', '')

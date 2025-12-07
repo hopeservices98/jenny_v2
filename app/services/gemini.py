@@ -8,31 +8,31 @@ import time
 import logging
 import re
 
-def _call_openrouter_generic(messages, temperature=0.8, max_tokens=1000):
-    """Fonction générique pour appeler OpenRouter."""
-    if not current_app.config.get('OPENROUTER_API_KEY'):
-        logging.error("Clé API OpenRouter manquante.")
+def _call_deepseek_generic(messages, temperature=0.8, max_tokens=1000):
+    """Fonction générique pour appeler l'API DeepSeek."""
+    api_key = current_app.config.get('DEEPSEEK_API_KEY')
+    if not api_key:
+        logging.error("Clé API DeepSeek manquante.")
         return None
         
     try:
         import requests
         
         payload = {
-            "model": current_app.config['OPENROUTER_MODEL'],
+            "model": current_app.config.get('DEEPSEEK_MODEL', 'deepseek-chat'),
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "stream": False
         }
         
         headers = {
-            "Authorization": f"Bearer {current_app.config['OPENROUTER_API_KEY']}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://jenny-ai.com",
-            "X-Title": "Jenny AI"
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
         }
         
         response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
+            "https://api.deepseek.com/chat/completions",
             headers=headers,
             json=payload,
             timeout=60
@@ -44,26 +44,26 @@ def _call_openrouter_generic(messages, temperature=0.8, max_tokens=1000):
                 ai_message = result['choices'][0]['message']['content']
                 return ai_message.strip()
             else:
-                logging.error(f"Réponse OpenRouter vide ou malformée: {result}")
+                logging.error(f"Réponse DeepSeek vide ou malformée: {result}")
                 return None
         else:
-            logging.error(f"ERREUR OPENROUTER: {response.status_code} - {response.text}")
+            logging.error(f"ERREUR DEEPSEEK: {response.status_code} - {response.text}")
             return None
             
     except Exception as e:
-        logging.error(f"EXCEPTION OPENROUTER: {e}")
+        logging.error(f"EXCEPTION DEEPSEEK: {e}")
         return None
 
 def _call_openrouter_internal(message_history, system_instruction):
-    """Fonction interne pour appeler OpenRouter (DeepSeek) pour le chat."""
+    """Fonction interne pour appeler DeepSeek pour le chat."""
     messages = [{"role": "system", "content": system_instruction}]
-    # Limiter l'historique pour OpenRouter pour économiser des tokens
+    # Limiter l'historique pour économiser des tokens
     recent_history = message_history[-20:] if len(message_history) > 20 else message_history
     
     for item in recent_history:
         messages.append({"role": item["role"], "content": item["content"]})
     
-    response = _call_openrouter_generic(messages, temperature=0.8, max_tokens=500)
+    response = _call_deepseek_generic(messages, temperature=0.8, max_tokens=500)
     
     if response:
         clean_message = re.sub(r'\s{2,}', ' ', response)
@@ -73,7 +73,7 @@ def _call_openrouter_internal(message_history, system_instruction):
 
 def call_gemini_memory_extractor(conversation_history, new_response):
     """
-    Appelle OpenRouter (DeepSeek) pour extraire les points clés d'une conversation.
+    Appelle DeepSeek pour extraire les points clés d'une conversation.
     """
     extraction_prompt = """
     Tu es un extracteur de points clés de conversation pour Jenny. Ton rôle est d'analyser la conversation fournie (historique et dernière réponse) et d'en extraire les informations les plus importantes, intimes, ou récurrentes concernant l'utilisateur.
@@ -105,11 +105,11 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     
     messages = [{"role": "user", "content": final_prompt}]
     
-    return _call_openrouter_generic(messages, temperature=0.3, max_tokens=500)
+    return _call_deepseek_generic(messages, temperature=0.3, max_tokens=500)
 
 def update_story_context(current_context, conversation_history, last_response):
     """
-    Met à jour le contexte narratif global (Mémoire Longue) via OpenRouter (DeepSeek).
+    Met à jour le contexte narratif global (Mémoire Longue) via DeepSeek.
     """
     update_prompt = """
     Tu es le Gardien de la Mémoire de l'histoire. Ton rôle est de mettre à jour le "Story Context" (le résumé narratif permanent) en fonction des derniers échanges.
@@ -144,12 +144,12 @@ def update_story_context(current_context, conversation_history, last_response):
     
     messages = [{"role": "user", "content": final_prompt}]
     
-    response = _call_openrouter_generic(messages, temperature=0.3, max_tokens=1000)
+    response = _call_deepseek_generic(messages, temperature=0.3, max_tokens=1000)
     return response if response else current_context
 
 def call_gemini(message_history, mood='neutre', system_prompt_override=None, user=None):
     """
-    Appelle l'API Gemini avec Jenny comme IA.
+    Appelle l'API DeepSeek avec Jenny comme IA.
     Retourne la réponse brute pour traitement par le frontend.
     """
     # 3. Préparation du Prompt
@@ -172,61 +172,15 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
 
     full_system_instruction = f"{base_prompt}{user_context}\\n\\nAgis le personnage à la perfection. Humeur actuelle : {mood_instruction}"
 
-    # --- STRATÉGIE HYBRIDE ---
+    # --- STRATÉGIE DEEPSEEK DIRECT ---
     
-    # 1. TOUS LES UTILISATEURS -> OpenRouter (DeepSeek)
-    # On utilise DeepSeek via OpenRouter pour tout le monde comme demandé
+    # 1. TOUS LES UTILISATEURS -> DeepSeek (Direct API)
     response = _call_openrouter_internal(message_history, full_system_instruction)
     if response:
         return response
     
-    # 2. FALLBACK -> Google Gemini (si OpenRouter échoue)
-    
-    # Config
-    genai.configure(api_key=current_app.config['GOOGLE_API_KEY'])
-
-    # Réglages de Sécurité
-    # On utilise des réglages permissifs pour éviter les faux positifs sur le contenu romantique/sensuel,
-    # mais on garde une sécurité de base. Le prompt système SFW assure que le contenu reste approprié.
-    safety_settings = {
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE, # Permissif pour la sensualité
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    }
-
-    # Modèle
-    model = genai.GenerativeModel(
-        model_name=current_app.config['GOOGLE_MODEL'],
-        system_instruction=full_system_instruction,
-        safety_settings=safety_settings
-    )
-
-    # Gestion de l'historique
-    gemini_history = []
-    for item in message_history[:-1]:
-        role = "model" if item["role"] == "assistant" else "user"
-        gemini_history.append({"role": role, "parts": [item["content"]]})
-
-    last_user_message = message_history[-1]["content"]
-
-    try:
-        chat = model.start_chat(history=gemini_history)
-        response = chat.send_message(last_user_message)
-
-        # Vérification
-        if response.parts:
-            ai_message = response.text
-            clean_message = re.sub(r'\s{2,}', ' ', ai_message)
-            clean_message = clean_message.replace(' , ', ' ')
-            return clean_message.strip()
-        else:
-            logging.warning(f"Gemini bloqué. Raison: {response.candidates[0].finish_reason if response.candidates else 'Inconnue'}")
-            return "(Jenny rougit et détourne le regard) Je... je ne trouve pas les mots..."
-
-    except Exception as e:
-        logging.error(f"ERREUR API GEMINI: {e}")
-        return "Désolée, un problème technique m'empêche de répondre."
+    # 2. FALLBACK -> Aucun (DeepSeek est la seule source)
+    return "Désolée, je suis momentanément indisponible (Erreur DeepSeek)."
 
 def generate_image_with_pollinations(image_description):
     """
