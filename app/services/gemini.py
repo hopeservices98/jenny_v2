@@ -279,6 +279,7 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
                         "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json",
                         "HTTP-Referer": "https://jenny-ai.com",
+                        "X-Title": "Jenny AI"
                     }
                     payload = {
                         "model": current_app.config.get('OPENROUTER_MODEL', 'deepseek/deepseek-chat'),
