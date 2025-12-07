@@ -8,6 +8,56 @@ import time
 import logging
 import re
 
+def _call_openrouter_internal(message_history, system_instruction):
+    """Fonction interne pour appeler OpenRouter."""
+    if not current_app.config.get('OPENROUTER_API_KEY'):
+        return None
+        
+    try:
+        import requests
+        
+        messages = [{"role": "system", "content": system_instruction}]
+        # Limiter l'historique pour OpenRouter
+        recent_history = message_history[-15:] if len(message_history) > 15 else message_history
+        
+        for item in recent_history:
+            messages.append({"role": item["role"], "content": item["content"]})
+        
+        payload = {
+            "model": current_app.config['OPENROUTER_MODEL'],
+            "messages": messages,
+            "temperature": 0.8,
+            "max_tokens": 500,
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {current_app.config['OPENROUTER_API_KEY']}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://jenny-ai.com",
+            "X-Title": "Jenny AI"
+        }
+        
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_message = result['choices'][0]['message']['content']
+            clean_message = re.sub(r'\s{2,}', ' ', ai_message)
+            clean_message = clean_message.replace(' , ', ' ')
+            return clean_message.strip()
+        else:
+            logging.error(f"ERREUR OPENROUTER: {response.status_code} - {response.text}")
+            return None
+            
+    except Exception as e:
+        logging.error(f"EXCEPTION OPENROUTER: {e}")
+        return None
+
 def call_gemini_memory_extractor(conversation_history, new_response):
     """
     Appelle Gemini pour extraire les points clés d'une conversation.
@@ -155,65 +205,15 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
     full_system_instruction = f"{base_prompt}{user_context}\n\nAgis le personnage à la perfection. Humeur actuelle : {mood_instruction}"
 
     # --- OPENROUTER (POUR UTILISATEURS FREE) ---
-    # Si l'utilisateur n'est pas premium et n'est pas admin, on utilise OpenRouter (modèle gratuit/moins cher)
-    if user and not user.is_premium and not user.is_admin and current_app.config.get('OPENROUTER_API_KEY'):
-        try:
-            import requests
-            
-            # Construction de l'historique pour OpenAI-compatible API (OpenRouter)
-            messages = [{"role": "system", "content": full_system_instruction}]
-            
-            # Limiter l'historique pour économiser des tokens
-            recent_history = message_history[-10:] if len(message_history) > 10 else message_history
-            
-            for item in recent_history:
-                messages.append({"role": item["role"], "content": item["content"]})
-            
-            payload = {
-                "model": current_app.config['OPENROUTER_MODEL'],
-                "messages": messages,
-                "temperature": 0.8,
-                "max_tokens": 300,
-            }
-            
-            headers = {
-                "Authorization": f"Bearer {current_app.config['OPENROUTER_API_KEY']}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://jenny-ai.com", # Requis par OpenRouter
-                "X-Title": "Jenny AI"
-            }
-            
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=60
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                ai_message = result['choices'][0]['message']['content']
-                # Nettoyage minimal des artefacts (espaces multiples, virgules isolées)
-                clean_message = re.sub(r'\s{2,}', ' ', ai_message)
-                clean_message = clean_message.replace(' , ', ' ')
-                return clean_message.strip()
-            elif response.status_code == 402 or response.status_code == 429: # Payment Required or Too Many Requests
-                print(f"QUOTA OPENROUTER ATTEINT: {response.status_code}")
-                # On laisse le modèle gérer la réponse en se basant sur le prompt système
-                pass
-            else:
-                print(f"ERREUR OPENROUTER: {response.status_code} - {response.text}")
-                return "Désolée, une erreur technique m'empêche de répondre pour le moment."
-                
-        except Exception as e:
-            print(f"ERREUR OPENROUTER: {e}")
-            return "Désolée, une erreur de connexion m'empêche de répondre."
-
-    # --- GOOGLE GEMINI (POUR PREMIUM & ADMIN) ---
-    # Si on arrive ici et qu'on est un utilisateur FREE, c'est qu'on ne doit PAS utiliser Gemini
-    if user and not (user.is_premium or user.is_admin):
-         # On laisse le modèle gérer la réponse en se basant sur le prompt système
-         pass
+    # Si l'utilisateur n'est pas premium et n'est pas admin, on utilise OpenRouter directement
+    if user and not user.is_premium and not user.is_admin:
+        response = _call_openrouter_internal(message_history, full_system_instruction)
+        if response:
+            return response
+        # Si OpenRouter échoue (quota, erreur), on tente Gemini en fallback (si configuré pour Free) ou on retourne une erreur
+        # Ici, on continue vers Gemini comme fallback ultime si OpenRouter plante
+    
+    # --- GOOGLE GEMINI (POUR PREMIUM & ADMIN, OU FALLBACK) ---
 
     # 1. Config
     genai.configure(api_key=current_app.config['GOOGLE_API_KEY'])
@@ -251,20 +251,27 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
         response = chat.send_message(last_user_message)
 
         # --- VERIFICATION ANTI-PLANTAGE ---
-        # Au lieu de planter si Google bloque, on vérifie s'il y a du texte
         if response.parts:
             ai_message = response.text
-            # Nettoyage minimal des artefacts (espaces multiples, virgules isolées)
             clean_message = re.sub(r'\s{2,}', ' ', ai_message)
             clean_message = clean_message.replace(' , ', ' ')
             return clean_message.strip()
         else:
-            # Si Google a bloqué quand même (Finish Reason)
-            print(f"DEBUG: Réponse bloquée. Finish Reason: {response.candidates[0].finish_reason}")
+            # Si Google bloque, on bascule sur OpenRouter (Fallback)
+            logging.warning(f"Gemini bloqué. Raison: {response.candidates[0].finish_reason if response.candidates else 'Inconnue'}")
+            logging.info("Basculement vers OpenRouter (Fallback)...")
+            fallback_response = _call_openrouter_internal(message_history, full_system_instruction)
+            if fallback_response:
+                return fallback_response
             return "(Jenny rougit et détourne le regard) Je... je ne peux pas dire ça ici."
 
     except Exception as e:
-        print(f"ERREUR API: {e}")
+        logging.error(f"ERREUR API GEMINI: {e}")
+        # Fallback vers OpenRouter en cas d'exception
+        logging.info("Basculement vers OpenRouter (Fallback Exception)...")
+        fallback_response = _call_openrouter_internal(message_history, full_system_instruction)
+        if fallback_response:
+            return fallback_response
         return "Désolée, un problème technique m'empêche de répondre."
 
 def generate_image_with_pollinations(image_description):
