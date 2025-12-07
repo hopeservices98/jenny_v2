@@ -8,11 +8,96 @@ import time
 import logging
 import re
 
+def _call_openai_generic(messages, temperature=0.7, max_tokens=500):
+    """Appelle l'API OpenAI (pour les utilisateurs Free)."""
+    api_key = current_app.config.get('OPENAI_API_KEY')
+    if not api_key:
+        logging.error("Clé API OpenAI manquante.")
+        return None
+    
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        
+        response = client.chat.completions.create(
+            model=current_app.config.get('OPENAI_MODEL', 'gpt-3.5-turbo'),
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        logging.error(f"ERREUR OPENAI: {e}")
+        return None
+
+def _call_google_gemini(message_history, system_instruction):
+    """Appelle l'API Google Gemini (pour les utilisateurs Premium)."""
+    api_key = current_app.config.get('GOOGLE_API_KEY')
+    if not api_key:
+        logging.error("Clé API Google Gemini manquante.")
+        return None
+        
+    try:
+        genai.configure(api_key=api_key)
+        
+        # Configuration du modèle
+        generation_config = {
+            "temperature": 0.9,
+            "top_p": 1,
+            "top_k": 1,
+            "max_output_tokens": 2048,
+        }
+        
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
+            },
+        ]
+        
+        model_name = current_app.config.get('GOOGLE_MODEL', 'gemini-1.5-pro')
+        model = genai.GenerativeModel(model_name=model_name,
+                                      generation_config=generation_config,
+                                      safety_settings=safety_settings,
+                                      system_instruction=system_instruction)
+                                      
+        # Conversion de l'historique pour Gemini
+        gemini_history = []
+        # On exclut le dernier message car send_message le prend en argument
+        history_to_convert = message_history[:-1]
+        last_user_message = message_history[-1]['content']
+        
+        for msg in history_to_convert:
+            role = "user" if msg["role"] == "user" else "model"
+            gemini_history.append({"role": role, "parts": [msg["content"]]})
+            
+        chat = model.start_chat(history=gemini_history)
+        response = chat.send_message(last_user_message)
+        
+        return response.text
+        
+    except Exception as e:
+        logging.error(f"ERREUR GEMINI: {e}")
+        return None
+
 def _call_deepseek_generic(messages, temperature=0.8, max_tokens=1000):
-    """Fonction générique pour appeler l'API DeepSeek."""
+    """Fonction générique pour appeler l'API DeepSeek (Fallback ou tâches de fond)."""
     api_key = current_app.config.get('DEEPSEEK_API_KEY')
     if not api_key:
-        logging.error("Clé API DeepSeek manquante.")
+        # logging.error("Clé API DeepSeek manquante.")
         return None
         
     try:
@@ -53,23 +138,6 @@ def _call_deepseek_generic(messages, temperature=0.8, max_tokens=1000):
     except Exception as e:
         logging.error(f"EXCEPTION DEEPSEEK: {e}")
         return None
-
-def _call_openrouter_internal(message_history, system_instruction):
-    """Fonction interne pour appeler DeepSeek pour le chat."""
-    messages = [{"role": "system", "content": system_instruction}]
-    # Limiter l'historique pour économiser des tokens
-    recent_history = message_history[-20:] if len(message_history) > 20 else message_history
-    
-    for item in recent_history:
-        messages.append({"role": item["role"], "content": item["content"]})
-    
-    response = _call_deepseek_generic(messages, temperature=0.8, max_tokens=500)
-    
-    if response:
-        clean_message = re.sub(r'\s{2,}', ' ', response)
-        clean_message = clean_message.replace(' , ', ' ')
-        return clean_message.strip()
-    return None
 
 def call_gemini_memory_extractor(conversation_history, new_response):
     """
@@ -172,15 +240,42 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
 
     full_system_instruction = f"{base_prompt}{user_context}\\n\\nAgis le personnage à la perfection. Humeur actuelle : {mood_instruction}"
 
-    # --- STRATÉGIE DEEPSEEK DIRECT ---
+    # --- STRATÉGIE HYBRIDE (PREMIUM vs FREE) ---
     
-    # 1. TOUS LES UTILISATEURS -> DeepSeek (Direct API)
-    response = _call_openrouter_internal(message_history, full_system_instruction)
+    response = None
+    
+    # 1. PREMIUM / ADMIN -> Google Gemini Pro
+    if user and (user.is_premium or user.is_admin):
+        logging.info(f"Utilisateur Premium {user.id}: Appel Gemini Pro")
+        response = _call_google_gemini(message_history, full_system_instruction)
+        
+    # 2. FREE -> OpenAI
+    else:
+        logging.info(f"Utilisateur Free {user.id if user else 'Anonyme'}: Appel OpenAI")
+        # Préparation des messages pour OpenAI
+        messages = [{"role": "system", "content": full_system_instruction}]
+        recent_history = message_history[-20:] if len(message_history) > 20 else message_history
+        for item in recent_history:
+            messages.append({"role": item["role"], "content": item["content"]})
+            
+        response = _call_openai_generic(messages)
+
     if response:
-        return response
+        clean_message = re.sub(r'\s{2,}', ' ', response)
+        clean_message = clean_message.replace(' , ', ' ')
+        return clean_message.strip()
     
-    # 2. FALLBACK -> Aucun (DeepSeek est la seule source)
-    return "Désolée, je suis momentanément indisponible (Erreur DeepSeek)."
+    # 3. FALLBACK -> DeepSeek (si configuré) ou Erreur
+    logging.warning("Échec du modèle principal, tentative de fallback DeepSeek...")
+    messages_fallback = [{"role": "system", "content": full_system_instruction}]
+    for item in message_history[-10:]:
+        messages_fallback.append({"role": item["role"], "content": item["content"]})
+    
+    fallback_response = _call_deepseek_generic(messages_fallback)
+    if fallback_response:
+        return fallback_response.strip()
+
+    return "Désolée, je suis momentanément indisponible (Erreur IA)."
 
 def generate_image_with_pollinations(image_description):
     """

@@ -86,7 +86,7 @@ class Config:
 
     # Google Gemini API
     GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY') or load_api_key_from_files()
-    GOOGLE_MODEL = "gemini-2.0-flash-exp"
+    GOOGLE_MODEL = "gemini-1.5-pro" # Configuration pour le Premium
 
     # getimg.ai API
     GETIMG_API_KEY = os.environ.get('GETIMG_API_KEY') or load_getimg_api_key()
@@ -94,6 +94,10 @@ class Config:
     # OpenRouter API
     OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY') or load_openrouter_api_key()
     OPENROUTER_MODEL = "deepseek/deepseek-chat"
+
+    # OpenAI API (Pour les utilisateurs Free)
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    OPENAI_MODEL = "gpt-3.5-turbo" # Ou gpt-4o-mini selon votre préférence
 
     # DeepSeek API (Direct)
     DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
