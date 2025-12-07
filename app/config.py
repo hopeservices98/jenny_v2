@@ -86,14 +86,14 @@ class Config:
 
     # Google Gemini API
     GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY') or load_api_key_from_files()
-    GOOGLE_MODEL = "gemini-2.5-pro"
+    GOOGLE_MODEL = "gemini-2.0-flash-exp"
 
     # getimg.ai API
     GETIMG_API_KEY = os.environ.get('GETIMG_API_KEY') or load_getimg_api_key()
     
     # OpenRouter API
     OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY') or load_openrouter_api_key()
-    OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct"
+    OPENROUTER_MODEL = "deepseek/deepseek-chat"
 
     # Configuration Cloudinary
     if 'CLOUDINARY_URL' in os.environ:

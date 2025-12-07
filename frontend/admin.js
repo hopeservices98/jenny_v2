@@ -222,7 +222,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 message: message
             }),
         })
-            .then(response => response.json())
+            .then(async response => {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    return response.json();
+                } else {
+                    const text = await response.text();
+                    // Si c'est une page HTML (probablement redirection login), on avertit l'utilisateur
+                    if (text.trim().startsWith("<!DOCTYPE html>") || text.trim().startsWith("<html")) {
+                        throw new Error("Session expirée. Veuillez rafraîchir la page et vous reconnecter.");
+                    }
+                    console.error("Réponse non-JSON:", text);
+                    throw new Error(`Réponse inattendue du serveur (${response.status}): ${text.substring(0, 50)}...`);
+                }
+            })
             .then(data => {
                 removeTypingIndicator(typingMessage);
                 if (data.response) {
@@ -234,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch((error) => {
                 console.error('Erreur:', error);
                 removeTypingIndicator(typingMessage);
-                addMessageToChatBox('bot', 'Désolé, une erreur de connexion est survenue.');
+                addMessageToChatBox('bot', `Désolé, une erreur est survenue: ${error.message}`);
             });
 
         messageInput.value = '';

@@ -102,7 +102,7 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     }
 
     model = genai.GenerativeModel(
-        model_name="gemini-2.5-pro",
+        model_name="gemini-2.0-flash-exp",
         safety_settings=safety_settings
     )
     
@@ -167,7 +167,7 @@ def update_story_context(current_context, conversation_history, last_response):
     }
 
     model = genai.GenerativeModel(
-        model_name="gemini-2.5-pro",
+        model_name="gemini-2.0-flash-exp",
         safety_settings=safety_settings
     )
     
@@ -207,14 +207,13 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
 
     # --- STRATÉGIE HYBRIDE ---
     
-    # 1. UTILISATEURS FREE -> OpenRouter (Llama 3) pour économiser les tokens Gemini
-    if user and not user.is_premium and not user.is_admin:
-        response = _call_openrouter_internal(message_history, full_system_instruction)
-        if response:
-            return response
-        # Si OpenRouter échoue, on continue vers Gemini en fallback
+    # 1. TOUS LES UTILISATEURS -> OpenRouter (DeepSeek)
+    # On utilise DeepSeek via OpenRouter pour tout le monde comme demandé
+    response = _call_openrouter_internal(message_history, full_system_instruction)
+    if response:
+        return response
     
-    # 2. UTILISATEURS PREMIUM/ADMIN (ou Fallback Free) -> Google Gemini
+    # 2. FALLBACK -> Google Gemini (si OpenRouter échoue)
     
     # Config
     genai.configure(api_key=current_app.config['GOOGLE_API_KEY'])
