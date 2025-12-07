@@ -49,6 +49,17 @@ def register_auth_routes(app):
             return jsonify({'message': 'Code envoyé avec succès'})
         else:
             return jsonify({'error': 'Erreur lors de l\'envoi du code. Veuillez réessayer.'}), 500
+    @app.route('/api/check-email', methods=['POST'])
+    def check_email_availability():
+        data = request.get_json()
+        email = data.get('email')
+        if not email:
+            return jsonify({'available': False, 'error': 'Email requis'}), 400
+            
+        if User.query.filter_by(email=email).first():
+            return jsonify({'available': False, 'error': 'Cet email est déjà utilisé. Connectez-vous.'})
+        
+        return jsonify({'available': True})
     @app.route('/auth/verify-code', methods=['POST'])
     def verify_code_check():
         data = request.get_json()

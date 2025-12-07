@@ -4,6 +4,43 @@ const emailInput = document.getElementById('email');
 const verificationCodeContainer = document.getElementById('verification-code-container');
 const errorMessage = document.getElementById('error-message');
 
+// Vérification de l'email dès qu'on quitte le champ
+emailInput.addEventListener('blur', async () => {
+    const email = emailInput.value;
+    if (email && email.includes('@')) {
+        try {
+            const response = await fetch('/api/check-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await response.json();
+            
+            if (!data.available) {
+                errorMessage.className = 'sexy-alert error';
+                errorMessage.textContent = data.error;
+                errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                sendCodeBtn.disabled = true;
+                sendCodeBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                emailInput.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                emailInput.classList.remove('focus:ring-pink-500');
+            } else {
+                // Reset si l'email est dispo
+                if (errorMessage.textContent.includes('déjà utilisé')) {
+                    errorMessage.textContent = '';
+                    errorMessage.className = '';
+                }
+                sendCodeBtn.disabled = false;
+                sendCodeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                emailInput.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
+                emailInput.classList.add('focus:ring-pink-500');
+            }
+        } catch (error) {
+            console.error('Erreur check email:', error);
+        }
+    }
+});
+
 sendCodeBtn.addEventListener('click', async () => {
     const email = emailInput.value;
     if (!email) {
