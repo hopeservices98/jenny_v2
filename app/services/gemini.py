@@ -261,7 +261,9 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
         response = _call_openai_generic(messages)
 
     if response:
-        clean_message = re.sub(r'\s{2,}', ' ', response)
+        # Nettoyage agressif des balises HTML cassées
+        clean_message = re.sub(r'<[^>]+>', '', response) # Supprime toutes les balises <...>
+        clean_message = re.sub(r'\s{2,}', ' ', clean_message)
         clean_message = clean_message.replace(' , ', ' ')
         return clean_message.strip()
     
