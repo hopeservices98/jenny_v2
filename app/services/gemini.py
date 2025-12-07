@@ -9,7 +9,7 @@ import logging
 import re
 
 def _call_openrouter_internal(message_history, system_instruction):
-    """Fonction interne pour appeler OpenRouter."""
+    """Fonction interne pour appeler OpenRouter (Llama 3)."""
     if not current_app.config.get('OPENROUTER_API_KEY'):
         return None
         
@@ -17,7 +17,7 @@ def _call_openrouter_internal(message_history, system_instruction):
         import requests
         
         messages = [{"role": "system", "content": system_instruction}]
-        # Limiter l'historique pour OpenRouter
+        # Limiter l'historique pour OpenRouter pour économiser des tokens
         recent_history = message_history[-15:] if len(message_history) > 15 else message_history
         
         for item in recent_history:
@@ -93,7 +93,7 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     
     final_prompt = extraction_prompt.format(conversation=formatted_conversation, response=new_response)
     
-    # Réglages de sécurité permissifs pour l'extraction (car le contenu peut être NSFW)
+    # Réglages de sécurité permissifs pour l'extraction
     safety_settings = {
         HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
@@ -120,6 +120,7 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     except Exception as e:
         logging.error(f"Erreur lors de l'extraction de mémoire par Gemini: {e}")
         return None
+
 def update_story_context(current_context, conversation_history, last_response):
     """
     Met à jour le contexte narratif global (Mémoire Longue).
@@ -193,53 +194,50 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
     user_context = ""
     if user:
         status = "PREMIUM" if user.is_premium or user.is_admin else "FREE"
-        user_context = f"\n\n[CONTEXTE UTILISATEUR]\nStatut: {status}\nNom: {user.first_name or user.username}"
+        user_context = f"\\n\\n[CONTEXTE UTILISATEUR]\\nStatut: {status}\\nNom: {user.first_name or user.username}"
         
         # Injection de la Mémoire Longue (StoryContext) pour les Premium
         if (user.is_premium or user.is_admin) and hasattr(user, 'story_context') and user.story_context:
-            user_context += f"\n\n[MÉMOIRE LONGUE / CONTEXTE NARRATIF]\n{user.story_context.content}\n"
+            user_context += f"\\n\\n[MÉMOIRE LONGUE / CONTEXTE NARRATIF]\\n{user.story_context.content}\\n"
             
         if not user.is_premium:
-            user_context += f"\nPhase de séduction actuelle: {user.interaction_step}/10 (Plus le chiffre est haut, plus tu dois teaser/frustrer)"
+            user_context += f"\\nPhase de séduction actuelle: {user.interaction_step}/10 (Plus le chiffre est haut, plus tu dois teaser/frustrer)"
 
-    full_system_instruction = f"{base_prompt}{user_context}\n\nAgis le personnage à la perfection. Humeur actuelle : {mood_instruction}"
+    full_system_instruction = f"{base_prompt}{user_context}\\n\\nAgis le personnage à la perfection. Humeur actuelle : {mood_instruction}"
 
-    # --- OPENROUTER (POUR UTILISATEURS FREE) ---
-    # Si l'utilisateur n'est pas premium et n'est pas admin, on utilise OpenRouter directement
+    # --- STRATÉGIE HYBRIDE ---
+    
+    # 1. UTILISATEURS FREE -> OpenRouter (Llama 3) pour économiser les tokens Gemini
     if user and not user.is_premium and not user.is_admin:
         response = _call_openrouter_internal(message_history, full_system_instruction)
         if response:
             return response
-        # Si OpenRouter échoue (quota, erreur), on tente Gemini en fallback (si configuré pour Free) ou on retourne une erreur
-        # Ici, on continue vers Gemini comme fallback ultime si OpenRouter plante
+        # Si OpenRouter échoue, on continue vers Gemini en fallback
     
-    # --- GOOGLE GEMINI (POUR PREMIUM & ADMIN, OU FALLBACK) ---
-
-    # 1. Config
+    # 2. UTILISATEURS PREMIUM/ADMIN (ou Fallback Free) -> Google Gemini
+    
+    # Config
     genai.configure(api_key=current_app.config['GOOGLE_API_KEY'])
 
-    # 2. Les Réglages de Sécurité (CRUCIAL POUR JENNY)
-    # Note: Pour éviter les blocages Google, on utilise des seuils permissifs mais on garde une sécurité minimale
-    # pour ne pas être flaggé comme application malveillante.
-    # Pour les utilisateurs Premium, on désactive tous les filtres pour permettre le RP libre
-    # Google peut toujours bloquer les contenus illégaux (CSAM, violence extrême), mais cela devrait laisser passer le RP érotique/NSFW.
+    # Réglages de Sécurité
+    # On utilise des réglages permissifs pour éviter les faux positifs sur le contenu romantique/sensuel,
+    # mais on garde une sécurité de base. Le prompt système SFW assure que le contenu reste approprié.
     safety_settings = {
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE, # Permissif pour la sensualité
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
     }
 
-    # 4. Le Modèle
+    # Modèle
     model = genai.GenerativeModel(
         model_name=current_app.config['GOOGLE_MODEL'],
         system_instruction=full_system_instruction,
         safety_settings=safety_settings
     )
 
-    # 5. Gestion de l'historique (Format correct, complet pour mémoire)
+    # Gestion de l'historique
     gemini_history = []
-    # On prend tout l'historique sauf le dernier message pour garder la mémoire complète
     for item in message_history[:-1]:
         role = "model" if item["role"] == "assistant" else "user"
         gemini_history.append({"role": role, "parts": [item["content"]]})
@@ -250,28 +248,18 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
         chat = model.start_chat(history=gemini_history)
         response = chat.send_message(last_user_message)
 
-        # --- VERIFICATION ANTI-PLANTAGE ---
+        # Vérification
         if response.parts:
             ai_message = response.text
             clean_message = re.sub(r'\s{2,}', ' ', ai_message)
             clean_message = clean_message.replace(' , ', ' ')
             return clean_message.strip()
         else:
-            # Si Google bloque, on bascule sur OpenRouter (Fallback)
             logging.warning(f"Gemini bloqué. Raison: {response.candidates[0].finish_reason if response.candidates else 'Inconnue'}")
-            logging.info("Basculement vers OpenRouter (Fallback)...")
-            fallback_response = _call_openrouter_internal(message_history, full_system_instruction)
-            if fallback_response:
-                return fallback_response
-            return "(Jenny rougit et détourne le regard) Je... je ne peux pas dire ça ici."
+            return "(Jenny rougit et détourne le regard) Je... je ne trouve pas les mots..."
 
     except Exception as e:
         logging.error(f"ERREUR API GEMINI: {e}")
-        # Fallback vers OpenRouter en cas d'exception
-        logging.info("Basculement vers OpenRouter (Fallback Exception)...")
-        fallback_response = _call_openrouter_internal(message_history, full_system_instruction)
-        if fallback_response:
-            return fallback_response
         return "Désolée, un problème technique m'empêche de répondre."
 
 def generate_image_with_pollinations(image_description):
