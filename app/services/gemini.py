@@ -43,7 +43,18 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     
     final_prompt = extraction_prompt.format(conversation=formatted_conversation, response=new_response)
     
-    model = genai.GenerativeModel(model_name="gemini-2.5-pro") # Utiliser un modèle plus performant pour l'extraction
+    # Réglages de sécurité permissifs pour l'extraction (car le contenu peut être NSFW)
+    safety_settings = {
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+    }
+
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-pro",
+        safety_settings=safety_settings
+    )
     
     try:
         response = model.generate_content(final_prompt)
@@ -92,7 +103,18 @@ def update_story_context(current_context, conversation_history, last_response):
         response=last_response
     )
     
-    model = genai.GenerativeModel(model_name="gemini-2.5-pro")
+    # Réglages de sécurité permissifs pour la mise à jour du contexte
+    safety_settings = {
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+    }
+
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-pro",
+        safety_settings=safety_settings
+    )
     
     try:
         response = model.generate_content(final_prompt)
