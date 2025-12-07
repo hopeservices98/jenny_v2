@@ -58,10 +58,14 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     
     try:
         response = model.generate_content(final_prompt)
-        if response.parts:
+        # Vérification robuste de la réponse
+        if response and hasattr(response, 'parts') and response.parts:
             return response.text
+        elif response and hasattr(response, 'prompt_feedback'):
+             logging.warning(f"Extraction mémoire bloquée. Feedback: {response.prompt_feedback}")
+             return None
         else:
-            logging.warning("Gemini n'a pas pu extraire de points clés.")
+            logging.warning("Gemini n'a pas pu extraire de points clés (réponse vide).")
             return None
     except Exception as e:
         logging.error(f"Erreur lors de l'extraction de mémoire par Gemini: {e}")
@@ -217,11 +221,13 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
     # 2. Les Réglages de Sécurité (CRUCIAL POUR JENNY)
     # Note: Pour éviter les blocages Google, on utilise des seuils permissifs mais on garde une sécurité minimale
     # pour ne pas être flaggé comme application malveillante.
+    # Pour les utilisateurs Premium, on désactive tous les filtres pour permettre le RP libre
+    # Google peut toujours bloquer les contenus illégaux (CSAM, violence extrême), mais cela devrait laisser passer le RP érotique/NSFW.
     safety_settings = {
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE, # On garde NONE ici pour le RP
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
     }
 
     # 4. Le Modèle
