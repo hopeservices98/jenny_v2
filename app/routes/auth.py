@@ -210,18 +210,37 @@ def register_auth_routes(app):
             return jsonify({'message': 'Si cet email existe, un lien de réinitialisation a été envoyé.'})
         return current_app.send_static_file('forgot_password.html')
 
-    @app.route('/reset-password', methods=['POST'])
+    @app.route('/reset-password/<token>', methods=['GET'])
+    def reset_password_form(token):
+        # Vérifier si le token est valide (optionnel ici, mais mieux pour l'UX)
+        user = User.query.filter_by(reset_token=token).first()
+        if not user or (user.reset_token_expires and user.reset_token_expires < datetime.utcnow()):
+            return "Lien invalide ou expiré.", 400
+        return current_app.send_static_file('reset_password.html')
+
+    @app.route('/api/reset-password', methods=['POST'])
     def reset_password():
         data = request.get_json()
-        email = data.get('email')
+        token = data.get('token')
         new_password = data.get('new_password')
         
-        user = User.query.filter_by(email=email).first()
-        if user:
-            user.set_password(new_password)
-            db.session.commit()
-            return jsonify({'message': 'Mot de passe mis à jour avec succès'})
-        return jsonify({'error': 'Utilisateur non trouvé'}), 404
+        if not token or not new_password:
+            return jsonify({'error': 'Données manquantes'}), 400
+
+        user = User.query.filter_by(reset_token=token).first()
+        
+        if not user:
+            return jsonify({'error': 'Token invalide'}), 400
+            
+        if user.reset_token_expires and user.reset_token_expires < datetime.utcnow():
+            return jsonify({'error': 'Le lien a expiré'}), 400
+            
+        user.set_password(new_password)
+        user.reset_token = None # Invalider le token
+        user.reset_token_expires = None
+        db.session.commit()
+        
+        return jsonify({'message': 'Mot de passe mis à jour avec succès'})
 
     @app.route('/logout')
     @login_required

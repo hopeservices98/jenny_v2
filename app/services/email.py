@@ -112,22 +112,21 @@ def send_verification_email(email, code):
 
 def send_password_reset_email(email, reset_link):
     """
-    Envoie un email pour la réinitialisation de mot de passe via SMTP Brevo
+    Envoie un email pour la réinitialisation de mot de passe via SMTP personnalisé
     """
     try:
-        # Charger le mot de passe SMTP
-        smtp_password = load_brevo_smtp_password()
+        # Charger les identifiants SMTP
+        credentials = get_smtp_credentials()
         
-        if not smtp_password:
-            # ERREUR si aucun mot de passe n'est disponible
-            logging.error("BREVO_SMTP_PASSWORD non configurée - IMPOSSIBLE D'ENVOYER L'EMAIL")
-            print(f"❌ ERREUR: Mot de passe SMTP Brevo manquant - Email NON envoyé à {email}")
+        if not credentials["username"] or not credentials["password"]:
+            logging.error("SMTP_USER ou SMTP_PASSWORD non configurées.")
+            print("❌ ERREUR: Identifiants SMTP manquants.")
             return False
         
-        # Configuration SMTP Brevo
-        smtp_server = "smtp-relay.brevo.com"
+        # Configuration SMTP
+        smtp_server = "mail.cip-rabemananjara.mg"
         smtp_port = 587
-        sender_email = "9d6e49001@smtp-brevo.com"
+        sender_email = "teste@cip-rabemananjara.mg"
         
         # Créer le message
         msg = MIMEMultipart("alternative")
@@ -193,7 +192,7 @@ def send_password_reset_email(email, reset_link):
         context = ssl.create_default_context()
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls(context=context)
-            server.login(sender_email, smtp_password)
+            server.login(credentials["username"], credentials["password"])
             server.send_message(msg)
         
         logging.info(f"Email de réinitialisation envoyé à {email}")
