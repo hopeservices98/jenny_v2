@@ -93,10 +93,6 @@ class Config:
     
     # OpenRouter API
     OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY') or load_openrouter_api_key()
-    if OPENROUTER_API_KEY:
-        print(f"INFO: Clé OpenRouter chargée: {OPENROUTER_API_KEY[:10]}...")
-    else:
-        print("AVERTISSEMENT: Aucune clé OpenRouter trouvée.")
     OPENROUTER_MODEL = "deepseek/deepseek-chat"
 
     # OpenAI API (Pour les utilisateurs Free)

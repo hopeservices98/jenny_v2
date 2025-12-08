@@ -19,8 +19,8 @@ def create_app():
 
     # Sécurité : En-têtes HTTP (CSP, HSTS, etc.)
     # content_security_policy=None permet de charger les scripts inline et externes (Tailwind, Marked)
-    # force_https=False car on est en local (mettre à True en prod)
-    Talisman(app, content_security_policy=None, force_https=False)
+    is_production = os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production'
+    Talisman(app, content_security_policy=None, force_https=is_production)
 
     # Sécurité : Rate Limiting (Protection contre brute-force et abus)
     limiter.init_app(app)
