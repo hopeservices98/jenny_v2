@@ -8,7 +8,7 @@
     <meta name="robots" content="noindex, nofollow">
     <title>Inscription - Jenny</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 
 <body class="bg-gray-900 text-white flex justify-center items-center min-h-screen py-10 bg-[url('/images/unnamed.jpg')] bg-cover bg-center bg-no-repeat relative">
@@ -19,6 +19,7 @@
             <p class="text-pink-200 text-sm italic">Crée ton compte pour commencer l'expérience...</p>
         </div>
         <form id="register-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div id="error-message" class="text-red-500 text-center mb-4 md:col-span-2"></div>
             <div class="mb-4">
                 <label for="username" class="block text-sm font-bold mb-2">Nom d'utilisateur</label>
                 <input type="text" id="username" name="username"
@@ -102,7 +103,6 @@
         <p class="text-center mt-4">
             Déjà un compte ? <a href="/login" class="text-pink-500 hover:underline">Connectez-vous</a>
         </p>
-        <div id="error-message" class="text-red-500 text-center mt-4"></div>
     </div>
     <script src="register.js"></script>
 </body>
