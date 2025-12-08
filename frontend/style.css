@@ -45,15 +45,17 @@
 
 .sexy-alert {
     animation: pulse-border 2s infinite;
-    background: rgba(31, 41, 55, 0.9);
+    background: rgba(31, 41, 55, 0.95);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(236, 72, 153, 0.5);
-    border-radius: 1rem;
-    padding: 1rem;
-    margin-top: 1rem;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem; /* Espace sous l'alerte */
     text-align: center;
-    font-weight: bold;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
 }
 
 .sexy-alert.error {
