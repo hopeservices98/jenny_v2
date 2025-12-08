@@ -51,10 +51,33 @@ sendCodeBtn.addEventListener('click', async () => {
 
     // Désactiver le bouton pour éviter le spam
     sendCodeBtn.disabled = true;
-    sendCodeBtn.textContent = 'Envoi...';
+    sendCodeBtn.textContent = 'Vérification...';
     sendCodeBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
     try {
+        // 1. Vérifier d'abord si l'email est disponible
+        const checkResponse = await fetch('/api/check-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const checkData = await checkResponse.json();
+
+        if (!checkData.available) {
+            errorMessage.className = 'sexy-alert error';
+            errorMessage.textContent = checkData.error;
+            errorMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Réactiver le bouton mais laisser l'erreur
+            sendCodeBtn.disabled = false;
+            sendCodeBtn.textContent = 'Envoyer code';
+            sendCodeBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            return; // ARRÊT ICI : On n'envoie pas le code
+        }
+
+        // 2. Si l'email est bon, on envoie le code
+        sendCodeBtn.textContent = 'Envoi...';
+        
         const response = await fetch('/api/send-code', {
             method: 'POST',
             headers: {
