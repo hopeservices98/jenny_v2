@@ -222,6 +222,24 @@ def get_image_generation_status(generation_id):
         'timestamp': time.time()
     })
 
+@chat_bp.route('/api/debug_env', methods=['GET'])
+@login_required
+def debug_env():
+    """Endpoint temporaire pour vérifier les variables d'environnement."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    import os
+    env_vars = {
+        'OPENAI_API_KEY_PRESENT': bool(os.environ.get('OPENAI_API_KEY')),
+        'OPENROUTER_API_KEY_PRESENT': bool(os.environ.get('OPENROUTER_API_KEY')),
+        'GOOGLE_API_KEY_PRESENT': bool(os.environ.get('GOOGLE_API_KEY')),
+        'GOOGLE_API_KEY_VALUE_START': os.environ.get('GOOGLE_API_KEY', '')[:10] + '...' if os.environ.get('GOOGLE_API_KEY') else 'N/A',
+        'OPENROUTER_KEY_FILE_EXISTS': os.path.exists(os.path.join(current_app.root_path, '..', 'openrouter_key.txt')),
+        'ENV_KEYS': sorted(list(os.environ.keys()))
+    }
+    return jsonify(env_vars)
+
 def register_chat_routes(app):
     """Enregistre les routes de chat."""
     app.register_blueprint(chat_bp)
