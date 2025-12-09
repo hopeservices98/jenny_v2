@@ -87,10 +87,27 @@ def _call_google_gemini(message_history, system_instruction):
         chat = model.start_chat(history=gemini_history)
         response = chat.send_message(last_user_message)
         
-        return response.text
+        if response.text:
+            logging.info(f"Réponse Gemini reçue (début): {response.text[:100]}...")
+            return response.text
+        else:
+            logging.warning("Réponse Gemini vide ou nulle.")
+            if response.candidates:
+                for candidate in response.candidates:
+                    if candidate.finish_reason:
+                        logging.warning(f"Gemini finish reason: {candidate.finish_reason}")
+                    if candidate.safety_ratings:
+                        logging.warning(f"Gemini safety ratings: {candidate.safety_ratings}")
+            return None
         
+    except genai.types.BlockedPromptException as e:
+        logging.error(f"ERREUR GEMINI (Prompt bloqué): {e}")
+        return None
+    except genai.types.StopCandidateException as e:
+        logging.error(f"ERREUR GEMINI (Candidat arrêté): {e}")
+        return None
     except Exception as e:
-        logging.error(f"ERREUR GEMINI: {e}")
+        logging.error(f"ERREUR GEMINI (Générique): {e}", exc_info=True)
         return None
 
 def _call_deepseek_generic(messages, temperature=0.8, max_tokens=1000):
