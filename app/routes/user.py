@@ -44,8 +44,11 @@ def register_user_routes(app):
         data = request.get_json()
         premium_code = data.get('code', '').strip()
         
-        # Vérification du code premium
-        if premium_code != 'Mine3472@':
+        # Vérification du code premium via variable d'environnement
+        import os
+        valid_code = os.environ.get('PREMIUM_CODE', 'Mine3472@') # Fallback temporaire pour compatibilité
+        
+        if premium_code != valid_code:
             return jsonify({'success': False, 'message': 'Code premium invalide.'}), 400
         
         user.is_premium = True
