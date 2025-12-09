@@ -99,9 +99,6 @@ class Config:
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
     OPENAI_MODEL = "gpt-3.5-turbo" # Ou gpt-4o-mini selon votre préférence
 
-    # DeepSeek API (Direct)
-    DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY')
-    DEEPSEEK_MODEL = "deepseek-chat"
 
     # Configuration Cloudinary
     if 'CLOUDINARY_URL' in os.environ:

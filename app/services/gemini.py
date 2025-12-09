@@ -98,6 +98,7 @@ def _call_google_gemini(message_history, system_instruction):
                         logging.warning(f"Gemini finish reason: {candidate.finish_reason}")
                     if candidate.safety_ratings:
                         logging.warning(f"Gemini safety ratings: {candidate.safety_ratings}")
+            logging.error("Gemini a renvoyé une réponse vide ou nulle, ou a été bloqué.")
             return None
         
     except genai.types.BlockedPromptException as e:
@@ -110,18 +111,18 @@ def _call_google_gemini(message_history, system_instruction):
         logging.error(f"ERREUR GEMINI (Générique): {e}", exc_info=True)
         return None
 
-def _call_deepseek_generic(messages, temperature=0.8, max_tokens=1000):
-    """Fonction générique pour appeler l'API DeepSeek (Fallback ou tâches de fond)."""
-    api_key = current_app.config.get('DEEPSEEK_API_KEY')
+def _call_openrouter_generic(messages, temperature=0.8, max_tokens=500, model_override=None):
+    """Fonction générique pour appeler l'API OpenRouter."""
+    api_key = current_app.config.get('OPENROUTER_API_KEY')
     if not api_key:
-        # logging.error("Clé API DeepSeek manquante.")
+        logging.error("Clé API OpenRouter manquante.")
         return None
         
     try:
         import requests
         
         payload = {
-            "model": current_app.config.get('DEEPSEEK_MODEL', 'deepseek-chat'),
+            "model": model_override or current_app.config.get('OPENROUTER_MODEL', 'google/gemini-2.5-flash'),
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -130,11 +131,13 @@ def _call_deepseek_generic(messages, temperature=0.8, max_tokens=1000):
         
         headers = {
             "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://jenny-ai.com",
+            "X-Title": "Jenny AI"
         }
         
         response = requests.post(
-            "https://api.deepseek.com/chat/completions",
+            "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
             timeout=60
@@ -146,42 +149,42 @@ def _call_deepseek_generic(messages, temperature=0.8, max_tokens=1000):
                 ai_message = result['choices'][0]['message']['content']
                 return ai_message.strip()
             else:
-                logging.error(f"Réponse DeepSeek vide ou malformée: {result}")
+                logging.error(f"Réponse OpenRouter vide ou malformée: {result}")
                 return None
         else:
-            logging.error(f"ERREUR DEEPSEEK: {response.status_code} - {response.text}")
+            logging.error(f"ERREUR OPENROUTER: {response.status_code} - {response.text}")
             return None
             
     except Exception as e:
-        logging.error(f"EXCEPTION DEEPSEEK: {e}")
+        logging.error(f"EXCEPTION OPENROUTER: {e}")
         return None
 
 def call_gemini_memory_extractor(conversation_history, new_response):
     """
-    Appelle DeepSeek pour extraire les points clés d'une conversation.
+    Appelle OpenRouter pour extraire les points clés d'une conversation.
     """
     extraction_prompt = """
     Tu es un extracteur de points clés de conversation pour Jenny. Ton rôle est d'analyser la conversation fournie (historique et dernière réponse) et d'en extraire les informations les plus importantes, intimes, ou récurrentes concernant l'utilisateur.
-
+ 
     Chaque point clé doit être une phrase concise et informative, suivie d'une catégorie pertinente (histoire, personnage, préférence, général, émotion, etc.).
-
+ 
     Format de sortie :
     - [Catégorie] Point clé 1.
     - [Catégorie] Point clé 2.
     - [Catégorie] Point clé 3.
-
+ 
     Exemple de sortie :
     - [Préférence] L'utilisateur aime les chats et a un chat nommé "Moustache".
     - [Histoire] L'utilisateur a mentionné un souvenir d'enfance lié à la plage.
     - [Général] L'utilisateur est intéressé par la psychologie.
     - [Émotion] L'utilisateur se sent seul.
-
+ 
     CONVERSATION :
     {conversation}
-
+ 
     DERNIÈRE RÉPONSE DE JENNY :
     {response}
-
+ 
     POINTS CLÉS EXTRAITS :
     """
     
@@ -190,22 +193,22 @@ def call_gemini_memory_extractor(conversation_history, new_response):
     
     messages = [{"role": "user", "content": final_prompt}]
     
-    return _call_deepseek_generic(messages, temperature=0.3, max_tokens=500)
+    return _call_openrouter_generic(messages, temperature=0.3, max_tokens=500, model_override="openrouter/auto")
 
 def update_story_context(current_context, conversation_history, last_response):
     """
-    Met à jour le contexte narratif global (Mémoire Longue) via DeepSeek.
+    Met à jour le contexte narratif global (Mémoire Longue) via OpenRouter.
     """
     update_prompt = """
     Tu es le Gardien de la Mémoire de l'histoire. Ton rôle est de mettre à jour le "Story Context" (le résumé narratif permanent) en fonction des derniers échanges.
-
+ 
     CONTEXTE ACTUEL :
     {current_context}
-
+ 
     DERNIERS ÉCHANGES :
     {conversation}
     Jenny: {response}
-
+ 
     TA MISSION :
     Mets à jour le contexte actuel pour refléter l'évolution de l'histoire.
     - Garde les faits fondamentaux (noms, lieux, relations clés).
@@ -213,7 +216,7 @@ def update_story_context(current_context, conversation_history, last_response):
     - Ajoute les nouveaux événements importants.
     - Supprime les détails triviaux ou obsolètes pour garder un résumé concis mais complet.
     - Le texte doit être à la troisième personne, décrivant l'état de la relation entre Jenny et l'utilisateur.
-
+ 
     NOUVEAU CONTEXTE (Texte brut uniquement) :
     """
     
@@ -229,7 +232,7 @@ def update_story_context(current_context, conversation_history, last_response):
     
     messages = [{"role": "user", "content": final_prompt}]
     
-    response = _call_deepseek_generic(messages, temperature=0.3, max_tokens=1000)
+    response = _call_openrouter_generic(messages, temperature=0.3, max_tokens=1000, model_override="openrouter/auto")
     return response if response else current_context
 
 def call_gemini(message_history, mood='neutre', system_prompt_override=None, user=None):
@@ -321,13 +324,13 @@ def call_gemini(message_history, mood='neutre', system_prompt_override=None, use
         clean_message = clean_message.replace(' , ', ' ')
         return clean_message.strip()
     
-    # 3. FALLBACK -> DeepSeek (si configuré) ou Erreur
-    logging.warning("Échec du modèle principal, tentative de fallback DeepSeek...")
+    # 3. FALLBACK -> OpenRouter (si le modèle principal a échoué)
+    logging.warning("Échec du modèle principal, tentative de fallback OpenRouter...")
     messages_fallback = [{"role": "system", "content": full_system_instruction}]
-    for item in message_history[-10:]:
+    for item in message_history[-10:]: # Utiliser un historique plus court pour le fallback
         messages_fallback.append({"role": item["role"], "content": item["content"]})
     
-    fallback_response = _call_deepseek_generic(messages_fallback)
+    fallback_response = _call_openrouter_generic(messages_fallback)
     if fallback_response:
         return fallback_response.strip()
 
